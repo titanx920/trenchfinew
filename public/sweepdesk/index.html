@@ -1,0 +1,1789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sweep Desk — Receivables Coaching Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="./xlsx.full.min.js"></script>
+<script>if(typeof XLSX==='undefined')document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"><\/script>');</script>
+<script src="./config.js"></script>
+<style>
+:root{
+  --ink:#0F1319; --panel:#161C25; --panel2:#1D2430; --line:#2A3240; --line2:#374253;
+  --paper:#EDF1F6; --muted:#8B95A7; --dim:#5E6A7C;
+  --cyan:#3DD6C4; --cyan-dim:#1F7F76; --cyan-bg:#0E2C29;
+  --red:#F0484F; --red-bg:#38141A;
+  --amber:#FFB224; --amber-bg:#372A0E;
+  --violet:#9A7CF0; --violet-bg:#221B3B;
+  --blue:#54A6FF; --blue-bg:#122335;
+  --grey-bg:#222A35;
+  --r:10px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--ink);color:var(--paper);font-family:'Inter',system-ui,sans-serif;
+  font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+h1,h2,h3,.disp{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font:inherit;color:inherit}
+::selection{background:var(--cyan);color:var(--ink)}
+:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+
+/* ---------- sign in ---------- */
+.signin{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(1200px 600px at 50% -10%,rgba(61,214,196,.07),transparent 70%)}
+.signin .box{width:100%;max-width:390px}
+.signin .mark{text-align:center;margin-bottom:26px}
+.signin .mark h1{font-size:27px;display:flex;align-items:center;justify-content:center;gap:9px}
+.signin .mark .dot{width:9px;height:9px;border-radius:50%;background:var(--cyan);box-shadow:0 0 12px var(--cyan)}
+.signin .mark p{color:var(--dim);font-size:12.5px;margin-top:5px}
+.who-list{display:flex;flex-direction:column;gap:7px;margin-bottom:14px}
+.who{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-radius:9px;
+  background:var(--panel);border:1px solid var(--line);text-align:left;transition:.12s}
+.who:hover{border-color:var(--cyan-dim);background:var(--panel2)}
+.who .n{font-weight:600;font-size:13.5px}
+.who .r{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);margin-top:1px}
+.who .go{color:var(--dim);font-size:17px}
+.who:hover .go{color:var(--cyan)}
+
+/* ---------- shell ---------- */
+.app{display:grid;grid-template-columns:236px 1fr;height:100vh}
+.rail{background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto}
+.brand{padding:19px 18px 15px;border-bottom:1px solid var(--line)}
+.brand h1{font-size:19px;font-weight:700;display:flex;align-items:center;gap:8px}
+.brand .dot{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan)}
+.brand p{font-size:10.5px;color:var(--dim);margin-top:3px;letter-spacing:.06em;text-transform:uppercase}
+.nav{padding:10px;flex:1}
+.nav button{width:100%;text-align:left;padding:9px 12px;border-radius:8px;color:var(--muted);
+  display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:500;margin-bottom:2px}
+.nav button:hover{background:var(--panel2);color:var(--paper)}
+.nav button.on{background:var(--panel2);color:var(--paper);box-shadow:inset 2px 0 0 var(--cyan)}
+.nav .pill{font-size:11px;padding:1px 7px;border-radius:20px;background:var(--grey-bg);color:var(--muted);font-family:'JetBrains Mono'}
+.nav .pill.red{background:var(--red-bg);color:var(--red)}
+.nav .pill.amber{background:var(--amber-bg);color:var(--amber)}
+.nav .pill.cyan{background:var(--cyan-bg);color:var(--cyan)}
+.nav .sep{font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.11em;padding:15px 12px 6px;font-weight:600}
+.me{padding:12px;border-top:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.av{width:30px;height:30px;border-radius:50%;background:var(--cyan-bg);color:var(--cyan);
+  display:grid;place-items:center;font-weight:700;font-size:12px;flex-shrink:0}
+.me .nm{font-size:12.5px;font-weight:600;line-height:1.2}
+.me .rl{font-size:10px;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+.me .out{margin-left:auto;color:var(--dim);font-size:11px}
+.me .out:hover{color:var(--red)}
+
+.main{overflow-y:auto;display:flex;flex-direction:column}
+.topbar{position:sticky;top:0;z-index:20;background:rgba(15,19,25,.93);backdrop-filter:blur(8px);
+  border-bottom:1px solid var(--line);padding:14px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.topbar h2{font-size:17px;font-weight:600}
+.topbar .sub{font-size:12px;color:var(--dim);margin-top:1px}
+.rulechip{display:flex;align-items:center;gap:9px;background:var(--panel);border:1px solid var(--line);
+  padding:7px 13px;border-radius:20px;font-size:12px;white-space:nowrap}
+.rulechip .k{color:var(--dim)}
+.rulechip .v{color:var(--cyan);font-weight:700}
+.body{padding:22px 24px 40px;flex:1}
+
+/* ---------- generic ---------- */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.card h3{font-size:14px;font-weight:600;margin-bottom:4px}
+.card .hint{font-size:12px;color:var(--dim);margin-bottom:14px;line-height:1.5}
+.btn{background:var(--cyan);color:#06231F;padding:9px 16px;border-radius:8px;font-weight:600;font-size:13px;display:inline-block}
+.btn:hover{filter:brightness(1.1)}
+.btn.ghost{background:var(--panel2);color:var(--paper);border:1px solid var(--line)}
+.btn.ghost:hover{border-color:var(--line2);filter:none}
+.btn.sm{padding:5px 11px;font-size:12px}
+.btn.wide{width:100%;text-align:center}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+label.f{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:500}
+input[type=text],input[type=number],input[type=password],select,textarea{
+  width:100%;background:var(--ink);border:1px solid var(--line);border-radius:7px;padding:9px 11px;font-size:13px}
+input:focus,select:focus,textarea:focus{border-color:var(--cyan);outline:none}
+textarea{resize:vertical;min-height:70px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.row{display:flex;gap:10px;align-items:center}
+.spacer{flex:1}
+.empty{text-align:center;padding:60px 20px;color:var(--dim)}
+.empty .big{font-family:'Space Grotesk';font-size:18px;color:var(--muted);margin-bottom:6px}
+
+/* ---------- legend: the key to reading everything ---------- */
+.key{display:flex;gap:16px;flex-wrap:wrap;align-items:center;background:var(--panel);
+  border:1px solid var(--line);border-radius:9px;padding:10px 14px;margin-bottom:16px;font-size:12px}
+.key .t{color:var(--dim);font-weight:600;text-transform:uppercase;letter-spacing:.06em;font-size:10px}
+.key .i{display:flex;align-items:center;gap:6px;color:var(--muted)}
+.key .sw{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+
+/* ---------- intake ---------- */
+.drops{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+.drop{border:1.5px dashed var(--line);border-radius:12px;padding:32px 20px;text-align:center;
+  background:var(--panel);transition:.15s;cursor:pointer}
+.drop:hover{border-color:var(--cyan-dim);background:var(--panel2)}
+.drop.over{border-color:var(--cyan);background:var(--panel2);box-shadow:0 0 0 3px rgba(61,214,196,.12)}
+.drop.has{border-style:solid;border-color:var(--cyan-dim)}
+.drop .lab{font-family:'Space Grotesk';font-size:15px;font-weight:600;margin-bottom:3px}
+.drop .sub{font-size:12px;color:var(--dim)}
+.drop .cnt{margin-top:12px;font-size:12px;color:var(--cyan);font-weight:500}
+.files{margin-top:10px;display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.chip{font-size:11px;background:var(--panel2);border:1px solid var(--line);padding:3px 8px;border-radius:20px;color:var(--muted)}
+
+/* ---------- stats ---------- */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px}
+.stat .n{font-family:'JetBrains Mono';font-size:26px;font-weight:700;line-height:1}
+.stat .l{font-size:11px;color:var(--dim);margin-top:6px;line-height:1.35}
+.stat.red{border-color:#542126}.stat.red .n{color:var(--red)}
+.stat.amber{border-color:#54401C}.stat.amber .n{color:var(--amber)}
+.stat.violet .n{color:var(--violet)}
+.stat.blue .n{color:var(--blue)}
+.stat.cyan .n{color:var(--cyan)}
+.stat.clk{cursor:pointer;position:relative;transition:.13s}
+.stat.clk:hover{border-color:var(--cyan-dim);transform:translateY(-1px)}
+.stat .go{font-size:10.5px;color:var(--dim);margin-top:8px;opacity:0;transition:.13s}
+.stat.clk:hover .go{opacity:1;color:var(--cyan)}
+
+/* follow-up calendar */
+.calwrap{display:flex;gap:18px;flex-wrap:wrap}
+.calmonth{flex:1;min-width:280px}
+.caltitle{font-family:'Space Grotesk';font-size:14px;font-weight:600;text-align:center;margin-bottom:10px}
+.calgrid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.caldow{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim);
+  text-align:center;padding:4px 0;font-weight:600}
+.calcell{position:relative;aspect-ratio:1.35;min-height:46px;background:var(--ink);border:1px solid var(--line);
+  border-radius:7px;padding:5px 6px;cursor:pointer;transition:.12s}
+.calcell:hover{border-color:var(--cyan-dim);background:var(--panel2)}
+.calcell.empty{background:transparent;border:none;cursor:default}
+.calcell.wknd{background:rgba(0,0,0,.18)}
+.calcell.today{border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan)}
+.calcell.sel{background:var(--panel2);border-color:var(--cyan);box-shadow:0 0 0 2px var(--cyan)}
+.calcell.off{border-bottom-width:3px}
+.caldn{font-family:'JetBrains Mono';font-size:11.5px;color:var(--muted)}
+.calcell.today .caldn{color:var(--cyan);font-weight:700}
+.calbadge{position:absolute;bottom:5px;right:6px;font-family:'JetBrains Mono';font-weight:700;
+  font-size:10.5px;padding:1px 6px;border-radius:10px}
+.b-over{background:var(--violet-bg);color:var(--violet)}
+.b-today{background:var(--amber-bg);color:var(--amber)}
+.b-due{background:var(--cyan-bg);color:var(--cyan)}
+.calheavy{position:absolute;top:5px;right:6px;width:6px;height:6px;border-radius:50%;background:var(--red);
+  box-shadow:0 0 5px var(--red)}
+.caloff{position:absolute;left:6px;bottom:6px;width:14px;height:3px;border-radius:2px}
+.calatlas{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:14px;padding-top:12px;
+  border-top:1px solid var(--line);font-size:11px;color:var(--dim)}
+.calatlas .atlas-t{font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-size:10px}
+.calatlas .ai{display:flex;align-items:center;gap:6px}
+.calatlas .caloff{position:static;display:inline-block}
+.btn.on2{background:var(--cyan);color:#06231F}
+/* time off */
+.offform{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:14px}
+.offform select,.offform input{padding:8px 10px;font-size:12.5px}
+.offrow{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.offnote{margin-bottom:12px;display:flex;gap:6px;flex-wrap:wrap}
+
+/* action code chip — the thing specialists work from */
+.code{display:inline-block;font-family:'JetBrains Mono';font-weight:700;font-size:12.5px;
+  padding:4px 10px;border-radius:6px;background:var(--panel2);border:1px solid var(--line2);
+  color:var(--paper);letter-spacing:.04em;cursor:pointer;transition:.12s}
+.code:hover{border-color:var(--cyan);color:var(--cyan)}
+/* pass stepper */
+.passes{display:flex;align-items:center;gap:4px}
+.passbig{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+.pbtn{padding:10px 6px;border-radius:8px;border:1.5px solid var(--line2);background:var(--ink);
+  font-size:11.5px;font-weight:600;color:var(--muted);transition:.12s}
+.pbtn:hover{border-color:var(--cyan);color:var(--paper)}
+.pbtn.on{background:var(--cyan);border-color:var(--cyan);color:#06231F}
+.pbtn.fin.on{background:#5BC98A;border-color:#5BC98A}
+.phist{font-size:11px;color:var(--dim);line-height:1.7;border-left:2px solid var(--line);padding-left:10px;margin-top:8px}
+.pdot{width:15px;height:15px;border-radius:50%;border:1.5px solid var(--line2);background:var(--ink);
+  cursor:pointer;padding:0;transition:.12s}
+.pdot:hover{border-color:var(--cyan)}
+.pdot.on{background:var(--cyan);border-color:var(--cyan)}
+.pdot.fin.on{background:var(--red);border-color:var(--red)}
+.plab{font-size:10px;color:var(--dim);margin-left:4px;white-space:nowrap;min-width:30px}
+/* worked tick */
+.tick{display:inline-flex;cursor:pointer;position:relative}
+.tick input{position:absolute;opacity:0;width:0;height:0}
+.tick .box{width:19px;height:19px;border-radius:5px;border:1.5px solid var(--line2);
+  background:var(--ink);display:grid;place-items:center;transition:.12s}
+.tick:hover .box{border-color:var(--cyan)}
+.tick .box::after{content:'✓';font-size:12px;font-weight:700;color:#06231F;opacity:0;transform:scale(.6);transition:.12s}
+.tick input:checked + .box{background:var(--cyan);border-color:var(--cyan)}
+.tick input:checked + .box::after{opacity:1;transform:scale(1)}
+.tick input:focus-visible + .box{outline:2px solid var(--cyan);outline-offset:2px}
+tbody tr.done{opacity:.52}
+tbody tr.done:hover{opacity:1}
+
+/* ---------- table ---------- */
+.tools{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.tools input[type=text],.tools select{width:auto;min-width:150px;padding:7px 10px;font-size:12px}
+.tbl-wrap{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);overflow:auto;max-height:calc(100vh - 350px)}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{position:sticky;top:0;background:var(--panel2);z-index:2;text-align:left;padding:10px 12px;
+  font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;
+  border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none}
+thead th:hover{color:var(--paper)}
+thead th .ar{color:var(--cyan);margin-left:3px}
+tbody td{padding:10px 12px;border-bottom:1px solid rgba(42,50,64,.55);vertical-align:top}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--panel2)}
+tbody tr.f-past{background:rgba(240,72,79,.07);box-shadow:inset 3px 0 0 var(--red)}
+tbody tr.f-past:hover{background:rgba(240,72,79,.13)}
+tbody tr.f-appr{background:rgba(255,178,36,.055);box-shadow:inset 3px 0 0 var(--amber)}
+tbody tr.f-appr:hover{background:rgba(255,178,36,.11)}
+tbody tr.f-fu{box-shadow:inset 3px 0 0 var(--violet)}
+.tag{display:inline-block;font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:5px;white-space:nowrap}
+.t-past{background:var(--red-bg);color:var(--red)}
+.t-appr{background:var(--amber-bg);color:var(--amber)}
+.t-fu{background:var(--violet-bg);color:var(--violet)}
+.t-stag{background:var(--blue-bg);color:var(--blue)}
+.t-none,.t-exc{background:var(--grey-bg);color:var(--dim)}
+.t-ok{background:var(--cyan-bg);color:var(--cyan)}
+
+/* SIGNATURE — the sweep clock */
+.clock{display:flex;align-items:center;gap:8px;min-width:118px}
+.clock .d{font-family:'JetBrains Mono';font-size:13px;font-weight:700;width:28px;text-align:right}
+.clock .track{flex:1;height:4px;background:var(--grey-bg);border-radius:2px;overflow:hidden}
+.clock .fill{height:100%;border-radius:2px}
+.clock.past .d{color:var(--red)} .clock.past .fill{background:var(--red)}
+.clock.appr .d{color:var(--amber)} .clock.appr .fill{background:var(--amber)}
+.clock.ok .d{color:var(--dim)} .clock.ok .fill{background:var(--cyan-dim)}
+.clock .u{font-size:10px;color:var(--dim);margin-left:1px}
+
+.miss{color:var(--red);font-weight:600;font-size:11px;margin-top:2px}
+.acct{font-family:'JetBrains Mono';font-size:12px}
+.xref{color:var(--cyan);font-size:11px}
+.todo{color:var(--muted);font-size:12px;line-height:1.4;max-width:270px}
+
+/* note pip in row — how specialists SEE manager guidance */
+.pip{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 8px;border-radius:5px;
+  background:var(--cyan-bg);color:var(--cyan);border:1px solid var(--cyan-dim);white-space:nowrap;font-weight:600}
+.pip.none{background:transparent;color:var(--dim);border:1px dashed var(--line)}
+.pip.none:hover{color:var(--cyan);border-color:var(--cyan-dim)}
+.notepv{font-size:11.5px;color:var(--muted);margin-top:5px;padding-left:9px;
+  border-left:2px solid var(--cyan-dim);line-height:1.45;max-width:270px}
+.notepv b{color:var(--cyan);font-weight:600}
+
+/* ---------- alerts ---------- */
+.alert{display:flex;gap:13px;align-items:center;padding:14px 16px;border-radius:9px;margin-bottom:9px;
+  background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--dim)}
+.alert.sev-high{border-left-color:var(--red)}
+.alert.sev-med{border-left-color:var(--amber)}
+.alert .txt{flex:1}
+.alert .who{font-weight:600;font-size:13.5px}
+.alert .msg{font-size:12.5px;color:var(--muted);margin-top:2px}
+.alert .num{font-family:'JetBrains Mono';font-weight:700;font-size:19px;min-width:38px;text-align:center}
+.alert.sev-high .num{color:var(--red)}
+.alert.sev-med .num{color:var(--amber)}
+
+/* ---------- bars ---------- */
+.bar-row{display:grid;grid-template-columns:145px 1fr 42px;gap:12px;align-items:center;margin-bottom:8px;font-size:12.5px}
+.bar-row .nm{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{height:20px;background:var(--grey-bg);border-radius:4px;overflow:hidden;display:flex}
+.bar-seg{height:100%}
+.bar-row .tot{font-family:'JetBrains Mono';text-align:right;font-weight:600;font-size:12px}
+
+/* ---------- admin ---------- */
+.adm-sec>h3{font-size:12.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--cyan);
+  margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid var(--line)}
+.tagin{display:flex;flex-wrap:wrap;gap:6px;background:var(--ink);border:1px solid var(--line);
+  border-radius:7px;padding:7px;min-height:40px;align-items:center}
+.tagin .tg{display:flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line);
+  padding:2px 6px 2px 9px;border-radius:5px;font-size:11.5px;font-family:'JetBrains Mono'}
+.tagin .tg button{color:var(--dim);font-size:14px;line-height:1;padding:0 2px}
+.tagin .tg button:hover{color:var(--red)}
+.tagin input{border:none;background:none;flex:1;min-width:80px;padding:2px;font-size:12px}
+.tagin input:focus{outline:none}
+.map-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:7px}
+.map-row .sp{font-size:12.5px;padding:9px 11px;background:var(--ink);border:1px solid var(--line);
+  border-radius:7px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preset{display:flex;gap:6px}
+.preset button{flex:1;padding:10px;border-radius:7px;border:1px solid var(--line);background:var(--ink);
+  font-family:'JetBrains Mono';font-weight:600;font-size:13px;color:var(--muted)}
+.preset button:hover{border-color:var(--line2);color:var(--paper)}
+.preset button.on{background:var(--cyan);color:#06231F;border-color:var(--cyan)}
+.urow{display:grid;grid-template-columns:1fr 110px 120px 34px;gap:8px;align-items:center;margin-bottom:7px}
+.urow .rb{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;
+  padding:8px;border-radius:6px;text-align:center}
+.rb-admin{background:var(--cyan-bg);color:var(--cyan)}
+.rb-manager{background:var(--violet-bg);color:var(--violet)}
+.rb-specialist{background:var(--grey-bg);color:var(--muted)}
+.warn{background:var(--amber-bg);border:1px solid #54401C;color:#FFD98A;padding:12px 14px;
+  border-radius:8px;font-size:12px;margin-bottom:16px;line-height:1.6}
+.warn b{color:var(--amber)}
+
+/* ---------- modal / notes thread ---------- */
+.mask{position:fixed;inset:0;background:rgba(5,8,12,.74);backdrop-filter:blur(3px);z-index:100;
+  display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--panel);border:1px solid var(--line);border-radius:14px;width:100%;max-width:560px;
+  max-height:88vh;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.55)}
+.modal header{padding:17px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.modal header h3{font-size:16px}
+.modal header .m{font-size:12px;color:var(--dim);margin-top:2px;font-family:'JetBrains Mono'}
+.modal .cnt{padding:20px;overflow-y:auto;flex:1}
+.modal footer{padding:14px 20px;border-top:1px solid var(--line);display:flex;gap:9px;align-items:center}
+.x{font-size:21px;color:var(--dim);line-height:1}
+.x:hover{color:var(--paper)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:7px 16px;font-size:12.5px;margin-bottom:16px}
+.kv dt{color:var(--dim)}
+.kv dd{font-family:'JetBrains Mono';font-size:12px}
+.callout{padding:11px 13px;border-radius:8px;font-size:12.5px;margin-bottom:16px;line-height:1.5}
+.co-past{background:var(--red-bg);border:1px solid #542126;color:#FFB3B7}
+.co-appr{background:var(--amber-bg);border:1px solid #54401C;color:#FFD98A}
+.co-fu{background:var(--violet-bg);border:1px solid #362B58;color:#CFC0FF}
+.co-stag{background:var(--blue-bg);border:1px solid #1E3A56;color:#B3D9FF}
+.thread{display:flex;flex-direction:column;gap:9px;margin-bottom:16px}
+.msg{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:11px 13px}
+.msg .hd{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.msg .au{font-size:12px;font-weight:600}
+.msg .rl{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--cyan);font-weight:600}
+.msg .ts{font-size:10.5px;color:var(--dim);margin-left:auto}
+.msg .tx{font-size:12.5px;color:var(--paper);line-height:1.5;white-space:pre-wrap}
+.msg .del{color:var(--dim);font-size:14px;line-height:1}
+.msg .del:hover{color:var(--red)}
+.nothread{font-size:12.5px;color:var(--dim);text-align:center;padding:18px;
+  border:1px dashed var(--line);border-radius:9px;margin-bottom:16px}
+.toast{position:fixed;bottom:22px;right:22px;background:var(--panel2);border:1px solid var(--cyan-dim);
+  padding:11px 17px;border-radius:9px;font-size:13px;z-index:200;box-shadow:0 10px 30px rgba(0,0,0,.45);animation:up .2s}
+@keyframes up{from{opacity:0;transform:translateY(8px)}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media(max-width:900px){.app{grid-template-columns:1fr}.rail{display:none}.drops,.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script>
+/* ============================================================
+   STATE
+   ============================================================ */
+const S = {
+  user: null,                    // {name, role, desk}
+  page: 'flags',
+  today: [], yesterday: [], xref: [],
+  todayFiles: [], yestFiles: [], xrefFiles: [],
+  threads: {},                   // acct -> [{author, role, text, status, at}]
+  passes: {},                    // acct -> {n:0..4, hist:[{n,by,at}]}
+  worked: {},                    // acct -> {by, at}  — specialist's "handled today" checkmark
+  archive: [],                   // every upload: {at, by, kind, files, count, rows?}
+  sort: {key:'_prio', dir:1},
+  calBase: null, calSel: null,   // follow-up calendar month + selected day
+  calTwin: false,                // show two months side by side
+  timeOff: [],                   // [{who, start, end, kind, note}]
+  filters: {q:'', desk:'', flag:'', mgr:'', pass:'', code:'', worked:''},
+  cfg: {
+    sweepDays: 30,
+    warnDays: 14,
+    excluded: ['PPA','PIF','SIF'],
+    sweptOnly: ['CNP','PNC','SPNPNC','SPNCNP'],
+    managers: {},
+    alerts: {past:15, appr:60, fu:40, stag:50},
+    xrefKey: 'Account #',
+    users: [
+      {name:'Tony',    role:'Admin',      pin:'admin1', desk:''},
+      {name:'Heather',  role:'Specialist', pin:'1017', desk:''},
+      {name:'Kyle',     role:'Specialist', pin:'6960', desk:''},
+      {name:'Isabel',   role:'Specialist', pin:'3325', desk:''},
+      {name:'Angela',   role:'Specialist', pin:'1001', desk:''},
+      {name:'Samantha', role:'Specialist', pin:'7754', desk:''},
+      {name:'Sara',     role:'Specialist', pin:'6283', desk:''},
+      {name:'Hannah',   role:'Specialist', pin:'4265', desk:''},
+      {name:'Cynthia',  role:'Specialist', pin:'1689', desk:''},
+      {name:'Erica',    role:'Specialist', pin:'5590', desk:''},
+    ],
+  }
+};
+const ROLES = ['Admin','Manager','Specialist'];
+const F = {PAST:'PAST THE RULE', APPR:'APPROACHING', FU:'FOLLOW-UP OVERDUE', STAG:'STAGNANT', NONE:'', EXC:'EXCLUDED', NODATE:'NO TOUCH DATE'};
+const PRIO = {[F.PAST]:1,[F.APPR]:2,[F.FU]:3,[F.STAG]:4,[F.NODATE]:5,[F.NONE]:6,[F.EXC]:7};
+const STATUSES = ['Needs coaching','Coached — watching','Escalated','Resolved'];
+
+const isAdmin   = () => S.user?.role==='Admin';
+const isManager = () => S.user?.role==='Admin' || S.user?.role==='Manager';
+const canCoach  = () => isManager();
+
+/* ============================================================
+   PARSE (handles text dates, real dates, and serials)
+   ============================================================ */
+const norm = s => String(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+const HEAD = {
+  desk:['desk'], assignee:['assignee'], acct:['account','accountnumber','acct'],
+  age:['accountage','age'], status:['status'], name:['name','residentname'],
+  lastWorked:['lastworked'], lastContact:['lastcontactmade','lastcontact'],
+  followUp:['followupon','followup'], balance:['currentbalance','balance'], property:['property']
+};
+function mapHeaders(hdr){
+  const m={};
+  hdr.forEach((h,i)=>{ const n=norm(h);
+    for(const [k,alts] of Object.entries(HEAD)){
+      if(m[k]!==undefined) continue;
+      if(alts.some(a=>n===a||n.startsWith(a))) m[k]=i;
+    }});
+  return m;
+}
+function toDate(v){
+  if(v===null||v===undefined||v==='') return null;
+  if(v instanceof Date && !isNaN(v)) return new Date(v.getFullYear(),v.getMonth(),v.getDate());
+  if(typeof v==='number'){ const d=new Date(Math.round((v-25569)*86400000));
+    return isNaN(d)?null:new Date(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate()); }
+  const s=String(v).trim(); if(!s) return null;
+  const m=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+  if(m){ let y=+m[3]; if(y<100) y+=2000; return new Date(y,+m[1]-1,+m[2]); }
+  const d=new Date(s); return isNaN(d)?null:new Date(d.getFullYear(),d.getMonth(),d.getDate());
+}
+const fmt = d => d ? String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')+'/'+d.getFullYear() : '—';
+const money = n => (n==null||isNaN(n)) ? '—' : '$'+Number(n).toLocaleString('en-US',{maximumFractionDigits:0});
+const today0 = () => { const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),d.getDate()); };
+const ago = iso => {
+  const s=Math.floor((Date.now()-new Date(iso))/1000);
+  if(s<60)return 'just now'; if(s<3600)return Math.floor(s/60)+'m ago';
+  if(s<86400)return Math.floor(s/3600)+'h ago'; return Math.floor(s/86400)+'d ago';
+};
+
+async function readSheet(file){
+  const wb = XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});
+  const sh = wb.SheetNames.find(n=>/detail/i.test(n)) || wb.SheetNames[0];
+  const aoa = XLSX.utils.sheet_to_json(wb.Sheets[sh],{header:1,raw:false,cellDates:true,defval:''});
+  let hi = aoa.findIndex(r=>r.some(c=>['account','accountnumber','acct'].includes(norm(c))));
+  if(hi<0) hi=0;
+  const m = mapHeaders(aoa[hi]); const rows=[];
+  for(let i=hi+1;i<aoa.length;i++){
+    const r=aoa[i]; if(!r||!r.length) continue;
+    const acct = m.acct!==undefined ? String(r[m.acct]||'').trim() : '';
+    if(!acct || /^total/i.test(acct) || /^total/i.test(String(r[0]||''))) continue;
+    const bal = parseFloat(String(r[m.balance]??'').replace(/[$,]/g,''));
+    rows.push({ acct,
+      desk:String(r[m.desk]??'').trim(), assignee:String(r[m.assignee]??'').trim(),
+      name:String(r[m.name]??'').trim(), status:String(r[m.status]??'').trim().toUpperCase(),
+      age:parseInt(r[m.age])||null, balance:isNaN(bal)?null:bal,
+      lastWorked:toDate(r[m.lastWorked]), lastContact:toDate(r[m.lastContact]),
+      followUp:toDate(r[m.followUp]), property:String(r[m.property]??'').trim() });
+  }
+  return rows;
+}
+async function readXref(file){
+  const wb = XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true});
+  return XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{raw:false,defval:''}).map(r=>({...r,_src:file.name}));
+}
+
+/* ============================================================
+   ENGINE
+   ============================================================ */
+let R = {rows:[], visible:[], specs:[], alerts:[], swept:[]};
+function compute(){
+  const T=today0(), C=S.cfg;
+  const yMap = new Map(S.yesterday.map(r=>[r.acct,r]));
+  const xKey = norm(C.xrefKey), xMap = new Map();
+  S.xref.forEach(r=>{
+    const k = Object.keys(r).find(k=>norm(k)===xKey||norm(k).startsWith('account'));
+    if(k && r[k]!=='') xMap.set(String(r[k]).trim(), r);
+  });
+  return S.today.map(r=>{
+    const o={...r};
+    const touch=[r.lastWorked,r.lastContact].filter(Boolean).sort((a,b)=>b-a)[0]||null;
+    o.lastTouch=touch;
+    o.days = touch ? Math.round((T-touch)/86400000) : null;
+    const y=yMap.get(r.acct);
+    o.stagnant = !!(y && y.lastWorked?.getTime()===r.lastWorked?.getTime());
+    o.fuOverdue = !!(r.followUp && r.followUp<T);
+    o.mismatch = !!(r.desk && r.assignee && r.desk.trim()!==r.assignee.trim());
+    o.noAssignee = !r.assignee;
+    o.xref = xMap.get(r.acct)||null;
+
+    if(C.excluded.includes(r.status)) o.flag=F.EXC;
+    else if(o.days===null) o.flag=F.NODATE;
+    else if(o.days>C.sweepDays) o.flag=F.PAST;
+    else if(o.days>=C.sweepDays-C.warnDays) o.flag=F.APPR;
+    else if(o.fuOverdue) o.flag=F.FU;
+    else if(o.stagnant) o.flag=F.STAG;
+    else o.flag=F.NONE;
+
+    o.atRisk = (o.flag===F.PAST||o.flag===F.APPR)?(r.balance||0):0;
+    o.left = o.days===null?null:(C.sweepDays+1-o.days);
+    o._prio = PRIO[o.flag]*1e6 + (o.days===null?0:(1000-Math.min(o.days,999)));
+    o.mgr = C.managers[r.desk]||'';
+    o.thread = S.threads[r.acct]||[];
+    o.noteStatus = o.thread.length ? o.thread[o.thread.length-1].status : null;
+    const P = S.passes[r.acct];
+    o.pass = P ? P.n : 0;
+    o.passInfo = P || null;
+    o.worked = S.worked[r.acct] || null;
+
+    o.todo =
+      o.flag===F.PAST ? `Past the ${C.sweepDays}-day rule by ${o.days-C.sweepDays} day${o.days-C.sweepDays===1?'':'s'}. Should already be in RDA — escalate today.` :
+      o.flag===F.APPR ? `Sweeps in ${o.left} day${o.left===1?'':'s'}. Work it before it leaves the desk.` :
+      o.flag===F.FU   ? `Follow-up was promised for ${fmt(r.followUp)} and hasn't happened.` :
+      o.flag===F.STAG ? `Nothing logged on this account since yesterday.` :
+      o.flag===F.NODATE ? `No last-worked or last-contact date on record.` : '';
+    return o;
+  });
+}
+function scope(rows){                    // specialists only see their own desk
+  if(S.user?.role==='Specialist' && S.user.desk)
+    return rows.filter(r=>r.desk===S.user.desk);
+  return rows;
+}
+function sweptRows(){
+  const C=S.cfg, tSet=new Set(S.today.map(r=>r.acct));
+  return scope(S.yesterday.map(r=>({...r,mgr:C.managers[r.desk]||''})))
+    .filter(r=>C.sweptOnly.includes(r.status))
+    .map(r=>({...r, gone:!tSet.has(r.acct),
+      lastTouch:[r.lastWorked,r.lastContact].filter(Boolean).sort((a,b)=>b-a)[0]||null}))
+    .sort((a,b)=>(b.gone-a.gone)||((b.balance||0)-(a.balance||0)));
+}
+function specialists(rows){
+  const m=new Map();
+  rows.forEach(r=>{ if(!r.desk) return;
+    if(!m.has(r.desk)) m.set(r.desk,{desk:r.desk,mgr:r.mgr,total:0,past:0,appr:0,fu:0,stag:0,noAsg:0,risk:0});
+    const s=m.get(r.desk); s.total++;
+    if(r.flag===F.PAST)s.past++; if(r.flag===F.APPR)s.appr++;
+    if(r.flag===F.FU)s.fu++; if(r.flag===F.STAG)s.stag++;
+    if(r.noAssignee)s.noAsg++; s.risk+=r.atRisk;
+  });
+  return [...m.values()].sort((a,b)=>(b.past+b.appr)-(a.past+a.appr));
+}
+function buildAlerts(specs){
+  const A=S.cfg.alerts, out=[];
+  specs.forEach(s=>{
+    if(s.past>=A.past) out.push({sev:'high',who:s.desk,n:s.past,msg:`accounts past the ${S.cfg.sweepDays}-day rule, still sitting on the desk`});
+    if(s.appr>=A.appr) out.push({sev:'med',who:s.desk,n:s.appr,msg:`accounts inside the ${S.cfg.warnDays}-day warning window`});
+    if(s.fu>=A.fu)   out.push({sev:'med',who:s.desk,n:s.fu,msg:`follow-ups promised and missed`});
+    if(s.stag>=A.stag) out.push({sev:'med',who:s.desk,n:s.stag,msg:`accounts with no activity since yesterday`});
+  });
+  return out.sort((a,b)=>(a.sev==='high'?0:1)-(b.sev==='high'?0:1)||b.n-a.n);
+}
+function refresh(){
+  persist();
+  if(!S.user){ renderSignin(); return; }
+  const all = compute();
+  R.rows = all;
+  R.visible = scope(all);
+  R.specs = specialists(R.visible);
+  R.alerts = buildAlerts(specialists(scope(all)));
+  R.swept = sweptRows();
+  renderApp();
+}
+
+/* ============================================================
+   SIGN IN
+   ============================================================ */
+const $ = s => document.querySelector(s);
+const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const initials = n => n.split(/\s+/).map(x=>x[0]).slice(0,2).join('').toUpperCase();
+
+function renderSignin(){
+  $('#root').innerHTML = `
+  <div class="signin"><div class="box">
+    <div class="mark">
+      <h1><span class="dot"></span>Sweep Desk</h1>
+      <p>Sign in to your desk</p>
+    </div>
+    <label class="f">Your name</label>
+    <select id="who-sel" style="margin-bottom:14px" onchange="onWhoPick(this.value)">
+      <option value="">— choose your name —</option>
+      ${S.cfg.users.map((u,i)=>`<option value="${i}">${esc(u.name)} · ${esc(u.role)}${u.desk?' · '+esc(u.desk):''}</option>`).join('')}
+    </select>
+    <div id="pin-wrap" style="display:none">
+      <label class="f">PIN</label>
+      <input type="password" id="pin" placeholder="Enter your PIN" autocomplete="off"
+        style="text-align:center;font-size:16px;letter-spacing:.12em;margin-bottom:10px">
+      <div id="pin-err" style="color:var(--red);font-size:12px;margin-bottom:10px;display:none">That PIN doesn't match.</div>
+      <button class="btn" style="width:100%" onclick="doSignin(+$('#who-sel').value)">Sign in</button>
+    </div>
+    <p style="font-size:11.5px;color:var(--dim);text-align:center;line-height:1.6;margin-top:14px">
+      Don't see your name? Ask your admin to add you.
+    </p>
+  </div></div>`;
+}
+window.onWhoPick = v => {
+  const wrap=$('#pin-wrap');
+  if(v===''){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  const p=$('#pin'); p.value=''; $('#pin-err').style.display='none';
+  p.focus(); p.onkeydown=e=>{ if(e.key==='Enter') doSignin(+v); };
+};
+window.doSignin = i => {
+  const u=S.cfg.users[i];
+  if($('#pin').value.trim() !== String(u.pin).trim()){ $('#pin-err').style.display='block'; $('#pin').value=''; $('#pin').focus(); return; }
+  S.user = {...u};
+  S.page = S.today.length ? 'flags' : 'intake';
+  closeModal(); toast(`Signed in as ${u.name}`); refresh();
+};
+window.signout = () => { S.user=null; S.filters={q:'',desk:'',flag:'',mgr:'',pass:'',code:'',worked:''}; refresh(); };
+
+/* ============================================================
+   APP SHELL
+   ============================================================ */
+function renderApp(){
+  $('#root').innerHTML = `
+  <div class="app">
+    <aside class="rail">
+      <div class="brand"><h1><span class="dot"></span>Sweep Desk</h1><p>Receivables Coaching</p></div>
+      <nav class="nav" id="nav"></nav>
+      <div class="me">
+        <div class="av">${initials(S.user.name)}</div>
+        <div><div class="nm">${esc(S.user.name)}</div><div class="rl">${esc(S.user.role)}</div></div>
+        <button class="out" onclick="signout()">Sign out</button>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="topbar">
+        <div><h2 id="pg-title"></h2><div class="sub" id="pg-sub"></div></div>
+        <div class="row">
+          <div class="rulechip"><span class="k">Sweep rule</span><span class="v mono">${S.cfg.sweepDays}d</span></div>
+          <div class="rulechip"><span class="k">Warn at</span><span class="v mono">${S.cfg.sweepDays-S.cfg.warnDays}d</span></div>
+        </div>
+      </div>
+      <div class="body" id="view"></div>
+    </main>
+  </div>`;
+  renderNav(); renderPage();
+}
+function renderNav(){
+  const past = R.visible.filter(r=>r.flag===F.PAST).length;
+  const queue = R.visible.filter(r=>[F.PAST,F.APPR,F.FU].includes(r.flag) && r.noteStatus!=='Resolved').length;
+  const notes = R.visible.filter(r=>r.thread.length).length;
+  const role = S.user.role;
+  let items;
+  if(role==='Specialist'){
+    // Specialist: same toolkit as a manager, but every page is scoped to their own desk.
+    items=[
+      {k:'sep',label:'My desk'},
+      {k:'intake',label:'Upload my reports'},
+      {k:'flags',label:'My accounts',pill:past||null,cls:'red'},
+      {k:'coach',label:'Needs my attention',pill:queue||null,cls:'amber'},
+      {k:'notes',label:'Notes from my manager',pill:notes||null,cls:'cyan'},
+      {k:'swept',label:'Swept off my desk',pill:R.swept.filter(s=>s.gone).length||null},
+      {k:'sep',label:'Plan'},
+      {k:'cal',label:'Follow-up calendar',pill:(R.visible.filter(r=>r.followUp&&dkey(r.followUp)===dkey(today0())).length+R.visible.filter(r=>r.fuOverdue).length)||null,cls:'amber'},
+      {k:'alerts',label:'My alerts',pill:R.alerts.length||null,cls:'red'},
+      {k:'dash',label:'My dashboard'},
+      {k:'archive',label:'My uploads',pill:S.archive.length||null},
+    ];
+  } else if(role==='Manager'){
+    items=[
+      {k:'sep',label:'Team'},
+      {k:'intake',label:'Intake'},
+      {k:'flags',label:'Red flags',pill:past||null,cls:'red'},
+      {k:'coach',label:'Coaching queue',pill:queue||null,cls:'amber'},
+      {k:'notes',label:'My coaching notes',pill:notes||null,cls:'cyan'},
+      {k:'swept',label:'Swept out',pill:R.swept.filter(s=>s.gone).length||null},
+      {k:'sep',label:'Read'},
+      {k:'alerts',label:'Alerts',pill:R.alerts.length||null,cls:'red'},
+      {k:'dash',label:'Team dashboard'},
+      {k:'cal',label:'Follow-up calendar',pill:(R.visible.filter(r=>r.followUp&&dkey(r.followUp)===dkey(today0())).length+R.visible.filter(r=>r.fuOverdue).length)||null,cls:'amber'},
+      {k:'archive',label:'Upload archive',pill:S.archive.length||null},
+    ];
+  } else { // Admin
+    items=[
+      {k:'sep',label:'Team'},
+      {k:'intake',label:'Intake'},
+      {k:'flags',label:'Red flags',pill:past||null,cls:'red'},
+      {k:'coach',label:'Coaching queue',pill:queue||null,cls:'amber'},
+      {k:'notes',label:'Coaching notes',pill:notes||null,cls:'cyan'},
+      {k:'swept',label:'Swept out',pill:R.swept.filter(s=>s.gone).length||null},
+      {k:'sep',label:'Read'},
+      {k:'alerts',label:'Alerts',pill:R.alerts.length||null,cls:'red'},
+      {k:'dash',label:'Team dashboard'},
+      {k:'cal',label:'Follow-up calendar',pill:(R.visible.filter(r=>r.followUp&&dkey(r.followUp)===dkey(today0())).length+R.visible.filter(r=>r.fuOverdue).length)||null,cls:'amber'},
+      {k:'archive',label:'Upload archive',pill:S.archive.length||null},
+      {k:'sep',label:'Setup'},
+      {k:'admin',label:'Admin'},
+    ];
+  }
+  $('#nav').innerHTML = items.map(i=> i.k==='sep'
+    ? `<div class="sep">${i.label}</div>`
+    : `<button data-p="${i.k}" class="${S.page===i.k?'on':''}"><span>${i.label}</span>
+        ${i.pill?`<span class="pill ${i.cls||''}">${i.pill}</span>`:''}</button>`).join('');
+  $('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{S.page=b.dataset.p;refresh();});
+}
+const TITLES = () => ({
+  intake:['Intake',"Drop today's desk reports — every page builds itself from them"],
+  flags:[S.user.role==='Specialist'?'My accounts':'Red flags','Worst first. Red is past the rule; amber is running out of time.'],
+  coach:[canCoach()?'Coaching queue':'Needs my attention','Flagged accounts that still need action'],
+  notes:['Manager notes','Every account a manager has left guidance on'],
+  swept:['Swept out',`Only ${S.cfg.sweptOnly.join(' / ')} — gone from today's pull`],
+  archive:['Upload archive','Every report anyone has loaded, saved to their profile the moment they dropped it'],
+  cal:['Follow-up calendar','When your promised follow-ups come due — plan the day around them'],
+  alerts:['Alerts','Specialists who crossed a threshold you set'],
+  dash:['Team dashboard','Load by desk, manager, and action code'],
+  admin:['Admin','People, rules, alerts, and cross-reference files'],
+}[S.page] || ['','']);
+
+function renderPage(){
+  const [t,s] = TITLES();
+  $('#pg-title').textContent=t; $('#pg-sub').textContent=s;
+  const v=$('#view');
+  if(S.page==='admin' && !isAdmin()){ v.innerHTML=`<div class="empty"><div class="big">Not your page</div><p>Only an Admin can open this.</p></div>`; return; }
+  if(!['intake','admin'].includes(S.page) && !S.today.length){
+    v.innerHTML = `<div class="empty"><div class="big">No reports loaded yet</div>
+      <p>Drop today's desk report${S.user.role==='Specialist'?'':'s'} on the upload page and everything fills in.</p>
+      <div style="margin-top:16px"><button class="btn" onclick="S.page='intake';refresh()">Upload reports</button></div></div>`;
+    return;
+  }
+  
+  ({intake:pIntake,flags:pFlags,coach:pCoach,notes:pNotes,swept:pSwept,alerts:pAlerts,dash:pDash,admin:pAdmin,archive:pArchive,cal:pCal}[S.page]||pFlags)(v);
+}
+
+/* ---------- the key (legend) ---------- */
+const KEY = `<div class="key">
+  <span class="t">How to read this</span>
+  <span class="i"><span class="sw" style="background:var(--red)"></span>Past the rule — should already be swept</span>
+  <span class="i"><span class="sw" style="background:var(--amber)"></span>Approaching — work it now</span>
+  <span class="i"><span class="sw" style="background:var(--violet)"></span>Follow-up missed</span>
+  <span class="i"><span class="sw" style="background:var(--blue)"></span>No activity since yesterday</span>
+  <span class="i"><span class="sw" style="background:var(--cyan)"></span>Manager left a note</span>
+  <span class="i"><span class="sw" style="background:var(--cyan)"></span>Check "Done" when you've worked a file today</span>
+  <span class="i"><span class="sw" style="background:var(--cyan)"></span>Pass dots — log 1st→final touch</span>
+  <span class="i"><span class="sw" style="background:var(--cyan);opacity:.5"></span>Faded row = worked today</span>
+</div>`;
+
+/* ---------- Intake ---------- */
+function pIntake(v){
+  v.innerHTML = `
+  <div class="drops">
+    <div class="drop ${S.todayFiles.length?'has':''}" id="d-today">
+      <div class="lab">Today's reports</div>
+      <div class="sub">Drop every specialist's file at once — or click to pick them</div>
+      ${S.todayFiles.length?`<div class="cnt">${S.today.length} accounts · ${S.todayFiles.length} file${S.todayFiles.length===1?'':'s'}</div>
+        <div class="files">${S.todayFiles.map(f=>`<span class="chip">${esc(f)}</span>`).join('')}</div>`:''}
+    </div>
+    <div class="drop ${S.yestFiles.length?'has':''}" id="d-yest">
+      <div class="lab">Yesterday's reports</div>
+      <div class="sub">Needed for swept-out and no-activity detection</div>
+      ${S.yestFiles.length?`<div class="cnt">${S.yesterday.length} accounts · ${S.yestFiles.length} file${S.yestFiles.length===1?'':'s'}</div>
+        <div class="files">${S.yestFiles.map(f=>`<span class="chip">${esc(f)}</span>`).join('')}</div>`:''}
+    </div>
+  </div>
+  ${S.today.length?statsHTML(R.visible):''}
+  <div class="row">
+    ${S.today.length?`<button class="btn" onclick="S.page='flags';refresh()">Open red flags →</button>
+      <button class="btn ghost" onclick="clearAll()">Clear reports</button>`:''}
+    <div class="spacer"></div>
+    ${S.today.length?`<span style="font-size:12px;color:var(--dim)">Sweeping past ${S.cfg.sweepDays} days · warning from ${S.cfg.sweepDays-S.cfg.warnDays} · ignoring ${S.cfg.excluded.join(', ')}</span>`:''}
+  </div>`;
+  wireDrop('#d-today','today'); wireDrop('#d-yest','yest');
+}
+function statsHTML(rows){
+  const n=f=>rows.filter(r=>r.flag===f).length;
+  const touched = rows.filter(r=>r.pass>0).length;
+  const workedN = rows.filter(r=>r.worked).length;
+  const cards=[
+    ['cyan',rows.length,'Accounts on desk','',''],
+    ['red',n(F.PAST),`Past the ${S.cfg.sweepDays}-day rule`,F.PAST,''],
+    ['amber',n(F.APPR),'Approaching the sweep',F.APPR,''],
+    ['violet',n(F.FU),'Follow-up missed',F.FU,''],
+    ['cyan',workedN,'Worked today','','worked'],
+    ['blue',touched,'Touched — 1st pass or more','','touched'],
+    ['red',money(rows.reduce((s,r)=>s+r.atRisk,0)),'Balance at risk of sweeping',null,''],
+  ];
+  return `<div class="stats">${cards.map(([c,val,l,flag,mode])=>{
+    const clickable = flag!==null;
+    const onclick = !clickable ? '' :
+      mode==='touched' ? `onclick="jumpTouched()"` :
+      mode==='worked' ? `onclick="jumpWorked()"` : `onclick="jumpFlag('${flag}')"`;
+    return `<div class="stat ${c} ${clickable?'clk':''}" ${onclick}${clickable?' role="button" tabindex="0"':''}>
+      <div class="n">${val}</div><div class="l">${l}</div>
+      ${clickable?'<div class="go">View →</div>':''}
+    </div>`;}).join('')}</div>`;
+}
+window.jumpFlag = f => { S.filters.flag=f; S.filters.q=''; S.page='flags'; refresh(); };
+window.jumpTouched = () => { S.filters={q:'',desk:S.filters.desk,flag:'',mgr:'',pass:'1+',code:'',worked:''}; S.page='flags'; refresh(); };
+window.jumpWorked = () => { S.filters={q:'',desk:S.filters.desk,flag:'',mgr:'',pass:'',code:'',worked:'yes'}; S.page='flags'; refresh(); };
+function wireDrop(sel,kind){
+  const el=$(sel); if(!el)return;
+  const pick=()=>{const i=document.createElement('input');i.type='file';i.multiple=true;
+    i.accept='.xlsx,.xls,.csv';i.onchange=e=>loadFiles([...e.target.files],kind);i.click();};
+  el.onclick=pick;
+  el.ondragover=e=>{e.preventDefault();el.classList.add('over')};
+  el.ondragleave=()=>el.classList.remove('over');
+  el.ondrop=e=>{e.preventDefault();el.classList.remove('over');loadFiles([...e.dataTransfer.files],kind)};
+}
+async function loadFiles(files,kind){
+  if(!files.length)return;
+  try{
+    let rows=[]; const names=[];
+    for(const f of files){ rows=rows.concat(await readSheet(f)); names.push(f.name); }
+    if(!rows.length){ toast('No account rows in that file — is it the desk report?'); return; }
+    const dedupe=rs=>{const m=new Map();rs.forEach(r=>m.set(r.acct+'|'+r.desk,r));return [...m.values()];};
+    if(kind==='today'){
+      // a fresh day's drop: if yesterday is empty, pull the most recent archived
+      // "today" snapshot from a PREVIOUS day and use it as yesterday automatically
+      if(!S.yesterday.length){
+        const prior=S.archive.find(a=>a.rows && /Today/.test(a.kind)
+          && new Date(a.at).toDateString()!==new Date().toDateString());
+        if(prior){
+          S.yesterday=revRows(prior.rows);
+          S.yestFiles=[...prior.files];
+          toast(`Archived reports from ${new Date(prior.at).toLocaleDateString()} loaded as yesterday's`);
+        }
+      }
+      S.today=dedupe([...S.today,...rows]); S.todayFiles=[...new Set([...S.todayFiles,...names])];
+    }
+    else { S.yesterday=dedupe([...S.yesterday,...rows]); S.yestFiles=[...new Set([...S.yestFiles,...names])]; }
+    rows.forEach(r=>{ if(r.desk && !(r.desk in S.cfg.managers)) S.cfg.managers[r.desk]=''; });
+    // auto-link specialist sign-ins to their desk by first name (only when unambiguous)
+    const allDesks=[...new Set([...S.today,...S.yesterday].map(x=>x.desk).filter(Boolean))];
+    S.cfg.users.forEach(u=>{
+      if(u.role!=='Specialist'||u.desk) return;
+      const hits=allDesks.filter(d=>d.toLowerCase().startsWith(u.name.toLowerCase()));
+      if(hits.length===1) u.desk=hits[0];
+    });
+    // archive the upload against this user's profile, immediately
+    S.archive.unshift({at:new Date().toISOString(), by:S.user.name, kind:kind==='today'?"Today's reports":"Yesterday's reports",
+      files:names, count:rows.length, rows:serRows(rows)});
+    // keep full row snapshots for the latest 6 uploads; older entries keep metadata only
+    S.archive.forEach((a,i)=>{ if(i>=10) delete a.rows; });
+    S.archive = S.archive.slice(0,40);
+    toast(`Loaded ${rows.length} accounts — archived to your profile`); refresh();
+  }catch(e){ toast('Could not read that file — '+e.message); }
+}
+
+/* -------- persistence: everything saves the moment it changes -------- */
+const DKEYS=['lastWorked','lastContact','followUp'];
+function serRows(rows){ return rows.map(r=>{const o={...r}; DKEYS.forEach(k=>o[k]=r[k]?r[k].toISOString():null); return o;}); }
+function revRows(rows){ return (rows||[]).map(r=>{const o={...r}; DKEYS.forEach(k=>o[k]=r[k]?new Date(r[k]):null); return o;}); }
+function persist(){
+  S.cfg._savedAt = S.cfg._savedAt || 0;
+  const payloads=[
+    ()=>({cfg:S.cfg,threads:S.threads,passes:S.passes,worked:S.worked,timeOff:S.timeOff,archive:S.archive,
+          today:serRows(S.today),yesterday:serRows(S.yesterday),
+          todayFiles:S.todayFiles,yestFiles:S.yestFiles}),
+    ()=>({cfg:S.cfg,threads:S.threads,passes:S.passes,worked:S.worked,timeOff:S.timeOff,
+          archive:S.archive.map(a=>({...a,rows:undefined})),
+          today:serRows(S.today),yesterday:serRows(S.yesterday),
+          todayFiles:S.todayFiles,yestFiles:S.yestFiles}),
+    ()=>({cfg:S.cfg,threads:S.threads,passes:S.passes,worked:S.worked}),
+  ];
+  for(const p of payloads){
+    try{ localStorage.setItem('sweepdesk', JSON.stringify(p())); return; }catch(e){}
+  }
+}
+function boot(){
+  try{
+    const d=JSON.parse(localStorage.getItem('sweepdesk')||'null');
+    if(!d) return false;
+    if(d.cfg) S.cfg={...S.cfg,...d.cfg};
+    if(d.threads) S.threads=d.threads;
+    if(d.passes) S.passes=d.passes;
+    if(d.worked) S.worked=d.worked;
+    if(d.timeOff) S.timeOff=d.timeOff;
+    if(d.archive) S.archive=d.archive;
+    if(d.today) S.today=revRows(d.today);
+    if(d.yesterday) S.yesterday=revRows(d.yesterday);
+    if(d.todayFiles) S.todayFiles=d.todayFiles;
+    if(d.yestFiles) S.yestFiles=d.yestFiles;
+    return true;
+  }catch(e){ return false; }
+}
+function clearAll(){ S.today=[];S.yesterday=[];S.todayFiles=[];S.yestFiles=[];
+  toast('Reports cleared. Notes and settings kept.'); refresh(); }
+
+/* ---------- table ---------- */
+function toolbar(rows){
+  const desks=[...new Set(R.visible.map(r=>r.desk).filter(Boolean))].sort();
+  const mgrs=[...new Set(R.visible.map(r=>r.mgr).filter(Boolean))].sort();
+  const solo = S.user.role==='Specialist';
+  return `<div class="tools">
+    <input type="text" id="f-q" placeholder="Search account, resident, code…" value="${esc(S.filters.q)}">
+    ${!solo?`<select id="f-desk"><option value="">All specialists</option>
+      ${desks.map(d=>`<option ${S.filters.desk===d?'selected':''}>${esc(d)}</option>`).join('')}</select>`:''}
+    ${!solo&&mgrs.length?`<select id="f-mgr"><option value="">All managers</option>
+      ${mgrs.map(m=>`<option ${S.filters.mgr===m?'selected':''}>${esc(m)}</option>`).join('')}</select>`:''}
+    <select id="f-flag"><option value="">All flags</option>
+      ${[F.PAST,F.APPR,F.FU,F.STAG,F.NODATE,F.EXC].map(f=>`<option ${S.filters.flag===f?'selected':''}>${f}</option>`).join('')}</select>
+    <select id="f-code" style="min-width:120px"><option value="">All codes</option>
+      ${[...new Set(R.visible.map(r=>r.status).filter(Boolean))].sort().map(c=>
+        `<option ${S.filters.code===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
+    <select id="f-pass">
+      <option value="">Any pass state</option>
+      <option value="0"  ${S.filters.pass==='0'?'selected':''}>Untouched</option>
+      <option value="1+" ${S.filters.pass==='1+'?'selected':''}>Touched (any pass)</option>
+      <option value="1"  ${S.filters.pass==='1'?'selected':''}>On 1st pass</option>
+      <option value="2"  ${S.filters.pass==='2'?'selected':''}>On 2nd pass</option>
+      <option value="3"  ${S.filters.pass==='3'?'selected':''}>On 3rd pass</option>
+      <option value="4"  ${S.filters.pass==='4'?'selected':''}>Final touch done</option>
+    </select>
+    <select id="f-worked">
+      <option value="">Worked or not</option>
+      <option value="no"  ${S.filters.worked==='no'?'selected':''}>Not worked yet</option>
+      <option value="yes" ${S.filters.worked==='yes'?'selected':''}>Worked today</option>
+    </select>
+    ${(S.filters.q||S.filters.desk||S.filters.flag||S.filters.mgr||S.filters.pass||S.filters.code||S.filters.worked)
+      ? `<button class="btn ghost sm" onclick="clearFilters()">Clear filters</button>`:''}
+    <div class="spacer"></div>
+    <span style="font-size:12px;color:var(--dim)">${rows.length} shown</span>
+    <button class="btn ghost sm" onclick="exportCSV()">Export CSV</button>
+  </div>`;
+}
+window.clearFilters = () => { S.filters={q:'',desk:'',flag:'',mgr:'',pass:'',code:'',worked:''}; renderPage(); };
+function wireTools(){
+  const q=$('#f-q');
+  if(q) q.oninput=e=>{S.filters.q=e.target.value;renderPage();
+    const el=$('#f-q'); if(el){el.focus();el.setSelectionRange(el.value.length,el.value.length);} };
+  ['desk','mgr','flag','pass','code','worked'].forEach(k=>{const el=$('#f-'+k);if(el)el.onchange=e=>{S.filters[k]=e.target.value;renderPage();};});
+}
+function applyFilters(rows){
+  const f=S.filters,q=f.q.toLowerCase();
+  return rows.filter(r=>(!f.desk||r.desk===f.desk)&&(!f.mgr||r.mgr===f.mgr)&&(!f.flag||r.flag===f.flag)&&
+    (!f.code || r.status===f.code) &&
+    (!f.worked || (f.worked==='yes' ? !!r.worked : !r.worked)) &&
+    (!f.pass || (f.pass==='0' ? r.pass===0 : f.pass==='1+' ? r.pass>0 : r.pass===+f.pass)) &&
+    (!q||[r.acct,r.name,r.status,r.desk,r.property].some(v=>String(v||'').toLowerCase().includes(q))));
+}
+function sortRows(rows){
+  const {key,dir}=S.sort;
+  return [...rows].sort((a,b)=>{
+    let x=a[key],y=b[key];
+    if(x==null)x=dir===1?Infinity:-Infinity; if(y==null)y=dir===1?Infinity:-Infinity;
+    if(x instanceof Date)x=x.getTime(); if(y instanceof Date)y=y.getTime();
+    if(typeof x==='string')return dir*x.localeCompare(y);
+    return dir*(x-y);
+  });
+}
+function clockCell(r){
+  if(r.days===null) return `<div class="clock ok"><span class="d">—</span><div class="track"></div></div>`;
+  const cls=r.flag===F.PAST?'past':r.flag===F.APPR?'appr':'ok';
+  const pct=Math.min(100,Math.round(r.days/(S.cfg.sweepDays+1)*100));
+  return `<div class="clock ${cls}"><span class="d">${r.days}</span><span class="u">d</span>
+    <div class="track"><div class="fill" style="width:${pct}%"></div></div></div>`;
+}
+const tagFor = f => f===F.NONE ? `<span class="tag t-ok">clear</span>`
+  : `<span class="tag ${{[F.PAST]:'t-past',[F.APPR]:'t-appr',[F.FU]:'t-fu',[F.STAG]:'t-stag',[F.EXC]:'t-exc',[F.NODATE]:'t-none'}[f]}">${f}</span>`;
+const rowCls = f => f===F.PAST?'f-past':f===F.APPR?'f-appr':f===F.FU?'f-fu':'';
+
+const PASS_LABEL=['Untouched','1st pass','2nd pass','3rd pass','Final touch'];
+const COLS=[['worked','Done'],['pass','Pass'],['acct','Account'],['status','Action code'],['desk','Specialist'],['name','Resident'],
+  ['days','Sweep clock'],['balance','Balance'],['lastWorked','Last worked'],['lastContact','Last contact'],
+  ['followUp','Follow-up'],['flag','Flag'],['todo','What to do'],['note','Manager note']];
+
+function tableHTML(rows){
+  return `<div class="tbl-wrap"><table>
+    <thead><tr>${COLS.map(([k,l])=>`<th data-k="${k}">${l}${S.sort.key===k?`<span class="ar">${S.sort.dir===1?'↑':'↓'}</span>`:''}</th>`).join('')}</tr></thead>
+    <tbody>${rows.slice(0,500).map(r=>{
+      const last = r.thread[r.thread.length-1];
+      return `<tr class="${rowCls(r.flag)}${r.worked?' done':''}" onclick="openAcct('${esc(r.acct)}')">
+        <td onclick="event.stopPropagation()">
+          <label class="tick" title="${r.worked?`Worked by ${esc(r.worked.by)} · ${ago(r.worked.at)}`:'Check when you have worked this file today'}">
+            <input type="checkbox" ${r.worked?'checked':''} onchange="toggleWorked('${esc(r.acct)}')">
+            <span class="box"></span>
+          </label>
+        </td>
+        <td onclick="event.stopPropagation()">${passWidget(r)}</td>
+        <td class="acct">${esc(r.acct)}${r.xref?' <span class="xref" title="Matched in a cross-reference file">◆</span>':''}</td>
+        <td><span class="code" onclick="event.stopPropagation();S.filters.code='${esc(r.status)}';renderPage()" title="Click to filter to ${esc(r.status)}">${esc(r.status||'—')}</span></td>
+        <td>${esc(r.desk||'—')}${r.mismatch?`<div class="miss">≠ ${esc(r.assignee||'—')}</div>`:''}${r.noAssignee?`<div class="miss">no assignee</div>`:''}</td>
+        <td>${esc(r.name||'—')}</td>
+        <td>${clockCell(r)}</td>
+        <td class="mono">${money(r.balance)}</td>
+        <td class="mono">${fmt(r.lastWorked)}</td>
+        <td class="mono">${fmt(r.lastContact)}</td>
+        <td class="mono">${r.followUp
+            ? `<span class="${r.fuOverdue?'miss':''}">${fmt(r.followUp)}</span>${r.fuOverdue?'<div class="miss">missed</div>':''}`
+            : '<span style="color:var(--dim)">none set</span>'}</td>
+        <td>${tagFor(r.flag)}</td>
+        <td><div class="todo">${esc(r.todo)}</div></td>
+        <td>${last
+          ? `<span class="pip">${esc(last.status)}</span>
+             <div class="notepv"><b>${esc(last.author)}:</b> ${esc(last.text.slice(0,70))}${last.text.length>70?'…':''}</div>`
+          : `<span class="pip none">${canCoach()?'+ add note':'no note yet'}</span>`}</td>
+      </tr>`;}).join('')}
+    </tbody></table>
+    ${rows.length>500?`<div style="padding:12px;text-align:center;color:var(--dim);font-size:12px">Showing the first 500 of ${rows.length}. Filter to narrow, or export the full list.</div>`:''}
+  </div>`;
+}
+function passWidget(r){
+  const dots=[1,2,3,4].map(k=>
+    `<button class="pdot ${r.pass>=k?'on':''} ${k===4?'fin':''}" title="${PASS_LABEL[k]}"
+       onclick="setPass('${esc(r.acct)}',${k})"></button>`).join('');
+  return `<div class="passes" title="${PASS_LABEL[r.pass]}${r.passInfo?` — last by ${esc(r.passInfo.hist[r.passInfo.hist.length-1]?.by||'')}`:''}">
+    ${dots}<span class="plab">${r.pass?PASS_LABEL[r.pass].replace(' pass',''):''}</span></div>`;
+}
+window.setPass = (acct,k) => {
+  const cur = S.passes[acct]?.n || 0;
+  const n = (k===cur) ? k-1 : k;          // clicking the current level steps back one
+  if(n<=0) delete S.passes[acct];
+  else {
+    const p = S.passes[acct] || {n:0,hist:[]};
+    p.n = n;
+    p.hist.push({n, by:S.user.name, at:new Date().toISOString()});
+    S.passes[acct]=p;
+  }
+  refresh();
+};
+window.toggleWorked = acct => {
+  if(S.worked[acct]) delete S.worked[acct];
+  else S.worked[acct] = {by:S.user.name, at:new Date().toISOString()};
+  refresh();
+};
+function wireTable(){
+  document.querySelectorAll('thead th').forEach(th=>th.onclick=()=>{
+    const k=th.dataset.k;
+    S.sort = S.sort.key===k ? {key:k,dir:-S.sort.dir} : {key:k==='days'?'_prio':k,dir:1};
+    renderPage();
+  });
+}
+function fuBanner(){
+  const T=dkey(today0());
+  const due=R.visible.filter(r=>r.followUp && dkey(r.followUp)===T);
+  const missed=R.visible.filter(r=>r.fuOverdue);
+  if(!due.length && !missed.length) return '';
+  return `<div class="alert ${missed.length?'sev-high':'sev-med'}" style="margin-bottom:14px">
+    <div class="num mono">${due.length+missed.length}</div>
+    <div class="txt">
+      <div class="who">Follow-ups need you${S.user.role==='Specialist'?'':' (team-wide)'}</div>
+      <div class="msg">${due.length?`<b style="color:var(--amber)">${due.length} due today</b>`:''}${due.length&&missed.length?' · ':''}${missed.length?`<b style="color:var(--red)">${missed.length} already missed</b>`:''} — promised call-backs count. Knock these out first.</div>
+    </div>
+    <button class="btn ghost sm" onclick="S.page='cal';refresh()">Open calendar</button>
+  </div>`;
+}
+function pFlags(v){
+  const rows=sortRows(applyFilters(R.visible));
+  v.innerHTML = fuBanner() + statsHTML(R.visible) + KEY + toolbar(rows) + tableHTML(rows);
+  wireTools(); wireTable();
+}
+function pCoach(v){
+  let rows=R.visible.filter(r=>[F.PAST,F.APPR,F.FU].includes(r.flag) && r.noteStatus!=='Resolved');
+  rows=sortRows(applyFilters(rows));
+  const done=R.visible.filter(r=>r.noteStatus==='Resolved').length;
+  v.innerHTML = `<div class="stats">
+      <div class="stat amber"><div class="n">${rows.length}</div><div class="l">${canCoach()?'Still need a conversation':'Still need action'}</div></div>
+      <div class="stat cyan"><div class="n">${done}</div><div class="l">Marked resolved</div></div>
+      <div class="stat red"><div class="n">${money(rows.reduce((s,r)=>s+r.atRisk,0))}</div><div class="l">Balance in this queue</div></div>
+    </div>` + KEY + toolbar(rows) + tableHTML(rows);
+  wireTools(); wireTable();
+}
+function pNotes(v){
+  const rows=R.visible.filter(r=>r.thread.length)
+    .sort((a,b)=>new Date(b.thread[b.thread.length-1].at)-new Date(a.thread[a.thread.length-1].at));
+  if(!rows.length){
+    v.innerHTML=`<div class="empty"><div class="big">No notes yet</div>
+      <p>${canCoach()?'Open any account and post a note — it appears here and on the specialist list instantly.':'When your manager leaves guidance on one of your accounts, it shows up here.'}</p></div>`;
+    return;
+  }
+  v.innerHTML = `<div class="stats">
+      <div class="stat cyan"><div class="n">${rows.length}</div><div class="l">Accounts with guidance</div></div>
+      <div class="stat amber"><div class="n">${rows.filter(r=>r.noteStatus==='Needs coaching').length}</div><div class="l">Needs coaching</div></div>
+      <div class="stat violet"><div class="n">${rows.filter(r=>r.noteStatus==='Escalated').length}</div><div class="l">Escalated</div></div>
+      <div class="stat cyan"><div class="n">${rows.filter(r=>r.noteStatus==='Resolved').length}</div><div class="l">Resolved</div></div>
+    </div>
+    <div style="max-width:820px">${rows.map(r=>{
+      const last=r.thread[r.thread.length-1];
+      return `<div class="alert ${last.status==='Escalated'?'sev-high':last.status==='Needs coaching'?'sev-med':''}"
+        style="cursor:pointer;align-items:flex-start" onclick="openAcct('${esc(r.acct)}')">
+        <span class="code" style="margin-top:2px">${esc(r.status||'—')}</span>
+        <div class="txt">
+          <div class="who">${esc(r.name||r.acct)} <span style="color:var(--dim);font-weight:400">· ${esc(r.desk)} · ${esc(r.acct)}</span></div>
+          <div class="msg"><b style="color:var(--cyan)">${esc(last.author)}:</b> ${esc(last.text)}</div>
+          <div style="font-size:11px;color:var(--dim);margin-top:4px">${r.thread.length} note${r.thread.length===1?'':'s'} · latest ${ago(last.at)} · ${tagFor(r.flag)}</div>
+        </div>
+        <span class="pip">${esc(last.status)}</span>
+      </div>`;}).join('')}</div>`;
+}
+function pSwept(v){
+  if(!S.yesterday.length){
+    v.innerHTML=`<div class="empty"><div class="big">Yesterday's reports aren't loaded</div>
+      <p>Swept-out detection compares yesterday's desks against today's.</p></div>`; return;
+  }
+  const s=R.swept, gone=s.filter(x=>x.gone);
+  v.innerHTML = `<div class="stats">
+      <div class="stat red"><div class="n">${gone.length}</div><div class="l">Swept or removed since yesterday</div></div>
+      <div class="stat cyan"><div class="n">${s.length}</div><div class="l">${S.cfg.sweptOnly.join(' / ')} tracked</div></div>
+      <div class="stat amber"><div class="n">${money(gone.reduce((a,b)=>a+(b.balance||0),0))}</div><div class="l">Balance that left the desk</div></div>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Account</th><th>Was on desk</th><th>Resident</th><th>Code</th><th>Age</th><th>Balance</th><th>Last touch</th><th>Where it is now</th></tr></thead>
+      <tbody>${s.map(r=>`<tr class="${r.gone?'f-past':''}" style="cursor:default">
+        <td class="acct">${esc(r.acct)}</td><td>${esc(r.desk||'—')}</td><td>${esc(r.name||'—')}</td>
+        <td class="mono">${esc(r.status)}</td><td class="mono">${r.age??'—'}</td>
+        <td class="mono">${money(r.balance)}</td><td class="mono">${fmt(r.lastTouch)}</td>
+        <td>${r.gone?'<span class="tag t-past">SWEPT / REMOVED</span>':'<span class="tag t-ok">still on the desk</span>'}</td>
+      </tr>`).join('')}</tbody></table></div>`;
+}
+function pAlerts(v){
+  if(!R.alerts.length){
+    v.innerHTML=`<div class="empty"><div class="big">Nobody crossed a threshold</div>
+      <p>Alerts fire when a specialist passes the limits set in Admin.</p></div>`; return;
+  }
+  v.innerHTML = `<div style="max-width:780px">${R.alerts.map(a=>`
+    <div class="alert sev-${a.sev}">
+      <div class="num mono">${a.n}</div>
+      <div class="txt"><div class="who">${esc(a.who)}</div><div class="msg">${esc(a.msg)}</div></div>
+      <button class="btn ghost sm" onclick="S.filters.desk='${esc(a.who)}';S.page='coach';refresh()">Open their queue</button>
+    </div>`).join('')}</div>`;
+}
+function pDash(v){
+  const sp=R.specs, max=Math.max(1,...sp.map(s=>s.total));
+  const codes={};
+  R.visible.forEach(r=>{ if([F.PAST,F.APPR].includes(r.flag)) codes[r.status]=(codes[r.status]||0)+1; });
+  const top=Object.entries(codes).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const cmax=Math.max(1,...top.map(c=>c[1]));
+  const byMgr={};
+  sp.forEach(s=>{const m=s.mgr||'No manager set';
+    if(!byMgr[m])byMgr[m]={t:0,p:0,a:0,f:0,risk:0};
+    byMgr[m].t+=s.total;byMgr[m].p+=s.past;byMgr[m].a+=s.appr;byMgr[m].f+=s.fu;byMgr[m].risk+=s.risk;});
+  v.innerHTML = `
+  <div class="grid2" style="align-items:start">
+    <div class="card">
+      <h3>Desk load and flag mix</h3>
+      <div class="hint">Each bar is one specialist's book. The coloured part is what's in trouble.</div>
+      ${KEY}
+      ${sp.map(s=>{const w=x=>(x/max*100)+'%';return `
+        <div class="bar-row"><span class="nm" title="${esc(s.desk)}">${esc(s.desk)}</span>
+          <div class="bar-track">
+            <div class="bar-seg" style="width:${w(s.past)};background:var(--red)"></div>
+            <div class="bar-seg" style="width:${w(s.appr)};background:var(--amber)"></div>
+            <div class="bar-seg" style="width:${w(s.fu)};background:var(--violet)"></div>
+            <div class="bar-seg" style="width:${w(Math.max(0,s.total-s.past-s.appr-s.fu))};background:var(--grey-bg)"></div>
+          </div><span class="tot">${s.total}</span></div>`;}).join('')}
+    </div>
+    <div class="card">
+      <h3>Action codes that stall</h3>
+      <div class="hint">Which status codes sit untouched toward the sweep. This is where the aging actually happens.</div>
+      ${top.length?top.map(([c,n])=>`
+        <div class="bar-row"><span class="nm mono">${esc(c)}</span>
+          <div class="bar-track"><div class="bar-seg" style="width:${n/cmax*100}%;background:var(--cyan-dim)"></div></div>
+          <span class="tot">${n}</span></div>`).join('')
+        :'<div style="color:var(--dim);font-size:13px">Nothing flagged yet.</div>'}
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>By manager</h3>
+    <div class="hint">Set who reports to whom in Admin → Teams.</div>
+    <div class="tbl-wrap" style="max-height:none"><table>
+      <thead><tr><th>Manager</th><th>Accounts</th><th>Past the rule</th><th>Approaching</th><th>Follow-up missed</th><th>At risk</th></tr></thead>
+      <tbody>${Object.entries(byMgr).sort((a,b)=>b[1].p-a[1].p).map(([m,d])=>`
+        <tr style="cursor:default"><td>${esc(m)}</td><td class="mono">${d.t}</td>
+        <td class="mono" style="color:var(--red)">${d.p}</td>
+        <td class="mono" style="color:var(--amber)">${d.a}</td>
+        <td class="mono" style="color:var(--violet)">${d.f}</td>
+        <td class="mono">${money(d.risk)}</td></tr>`).join('')}</tbody></table></div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h3>Specialist detail</h3>
+    <div class="hint">Click a row to open that specialist's coaching queue.</div>
+    <div class="tbl-wrap" style="max-height:none"><table>
+      <thead><tr><th>Specialist</th><th>Manager</th><th>Accounts</th><th>Past</th><th>Approaching</th><th>FU missed</th><th>No activity</th><th>No assignee</th><th>At risk</th></tr></thead>
+      <tbody>${sp.map(s=>`<tr onclick="S.filters.desk='${esc(s.desk)}';S.page='coach';refresh()">
+        <td>${esc(s.desk)}</td><td style="color:var(--dim)">${esc(s.mgr||'—')}</td>
+        <td class="mono">${s.total}</td>
+        <td class="mono" style="color:var(--red)">${s.past}</td>
+        <td class="mono" style="color:var(--amber)">${s.appr}</td>
+        <td class="mono" style="color:var(--violet)">${s.fu}</td>
+        <td class="mono" style="color:var(--blue)">${s.stag}</td>
+        <td class="mono">${s.noAsg}</td>
+        <td class="mono">${money(s.risk)}</td></tr>`).join('')}</tbody></table></div>
+  </div>`;
+}
+
+/* ---------- FOLLOW-UP CALENDAR ---------- */
+const dkey = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const parseK = k => new Date(k+'T00:00:00');
+const inRange = (k,start,end) => k>=start && k<=end;
+
+// build the full follow-up index off the loaded reports, keyed by day
+function followUpIndex(){
+  const byDay={};
+  R.visible.forEach(r=>{ if(r.followUp) (byDay[dkey(r.followUp)] ||= []).push(r); });
+  return byDay;
+}
+// which time-off entries touch a given day (scoped: specialists see only their own)
+function offOnDay(k){
+  return S.timeOff.filter(t=>{
+    if(S.user.role==='Specialist' && t.who!==S.user.name && t.who!=='Whole team') return false;
+    return inRange(k, t.start, t.end);
+  });
+}
+const OFF_KIND = {Vacation:{c:'var(--blue)',bg:'var(--blue-bg)'},Sick:{c:'var(--violet)',bg:'var(--violet-bg)'},
+  'Personal / PTO':{c:'var(--cyan)',bg:'var(--cyan-bg)'},Holiday:{c:'var(--dim)',bg:'var(--grey-bg)'}};
+
+function monthGrid(base, byDay){
+  const T=today0(), y=base.getFullYear(), m=base.getMonth();
+  const monthName=base.toLocaleString('en-US',{month:'long',year:'numeric'});
+  const startDow=new Date(y,m,1).getDay(), daysIn=new Date(y,m+1,0).getDate();
+  const cells=[];
+  for(let i=0;i<startDow;i++) cells.push(null);
+  for(let d=1;d<=daysIn;d++) cells.push(new Date(y,m,d));
+  return `
+  <div class="calmonth">
+    <div class="caltitle">${monthName}</div>
+    <div class="calgrid">
+      ${['S','M','T','W','T','F','S'].map(d=>`<div class="caldow">${d}</div>`).join('')}
+      ${cells.map(d=>{
+        if(!d) return '<div class="calcell empty"></div>';
+        const k=dkey(d), list=byDay[k]||[];
+        const past=k<dkey(T), isToday=k===dkey(T), selCls=S.calSel===k?' sel':'';
+        const off=offOnDay(k);
+        const weekend=[0,6].includes(d.getDay());
+        // dollar weight drives an intensity dot
+        const risk=list.reduce((s,r)=>s+(r.balance||0),0);
+        const heavy = list.length>=5 || risk>=5000;
+        const badge = list.length
+          ? `<span class="calbadge ${past?'b-over':isToday?'b-today':'b-due'}">${list.length}</span>`:'';
+        const offbar = off.length
+          ? `<span class="caloff" style="background:${OFF_KIND[off[0].kind]?.c||'var(--dim)'}" title="${off.map(o=>esc(o.who)+' — '+esc(o.kind)).join(', ')}"></span>`:'';
+        return `<div class="calcell${isToday?' today':''}${selCls}${weekend?' wknd':''}${off.length?' off':''}" onclick="calPick('${k}')">
+          <span class="caldn">${d.getDate()}</span>${heavy?'<span class="calheavy" title="Heavy day — 5+ follow-ups or $5k+ at stake"></span>':''}${badge}${offbar}</div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function pCal(v){
+  if(!S.calBase) S.calBase=new Date(today0().getFullYear(),today0().getMonth(),1);
+  const base=S.calBase, T=today0();
+  const byDay=followUpIndex();
+  const overdue=R.visible.filter(r=>r.fuOverdue);
+  const aheadCount=Object.entries(byDay).filter(([k])=>k>dkey(T)).reduce((s,[,l])=>s+l.length,0);
+  const next=new Date(base.getFullYear(),base.getMonth()+1,1);
+
+  const sel = S.calSel ? (byDay[S.calSel]||[]) : null;
+  const selDate = S.calSel ? parseK(S.calSel) : null;
+  const selOff = S.calSel ? offOnDay(S.calSel) : [];
+
+  v.innerHTML = `
+  <div class="stats">
+    <div class="stat violet clk" onclick="S.filters={q:'',desk:'',flag:'FOLLOW-UP OVERDUE',mgr:'',pass:'',code:'',worked:''};S.page='flags';refresh()">
+      <div class="n">${overdue.length}</div><div class="l">Already missed — recontact now</div><div class="go">View →</div></div>
+    <div class="stat amber"><div class="n">${(byDay[dkey(T)]||[]).length}</div><div class="l">Due today</div></div>
+    <div class="stat cyan"><div class="n">${aheadCount}</div><div class="l">Scheduled ahead</div></div>
+    <div class="stat blue"><div class="n">${S.timeOff.length}</div><div class="l">Time-off entries</div></div>
+  </div>
+
+  <div class="card" style="max-width:${S.calTwin?'1180':'620'}px">
+    <div class="row" style="margin-bottom:6px">
+      <button class="btn ghost sm" onclick="calShift(-1)">‹</button>
+      <div class="spacer"></div>
+      <button class="btn ghost sm ${S.calTwin?'':'on2'}" onclick="S.calTwin=false;renderPage()">1 month</button>
+      <button class="btn ghost sm ${S.calTwin?'on2':''}" onclick="S.calTwin=true;renderPage()">2 months</button>
+      <button class="btn ghost sm" onclick="S.calBase=new Date(today0().getFullYear(),today0().getMonth(),1);S.calSel=null;renderPage()">Today</button>
+      <div class="spacer"></div>
+      <button class="btn ghost sm" onclick="calShift(1)">›</button>
+    </div>
+    <div class="calwrap">
+      ${monthGrid(base, byDay)}
+      ${S.calTwin?monthGrid(next, byDay):''}
+    </div>
+    <div class="calatlas">
+      <span class="atlas-t">Atlas</span>
+      <span class="ai"><span class="calbadge b-over" style="position:static">n</span> missed follow-ups</span>
+      <span class="ai"><span class="calbadge b-today" style="position:static">n</span> due today</span>
+      <span class="ai"><span class="calbadge b-due" style="position:static">n</span> upcoming</span>
+      <span class="ai"><span class="calheavy" style="position:static;display:inline-block"></span> heavy day (5+ or $5k+)</span>
+      <span class="ai"><span class="caloff" style="position:static;background:var(--blue)"></span> vacation</span>
+      <span class="ai"><span class="caloff" style="position:static;background:var(--violet)"></span> sick</span>
+      <span class="ai"><span class="caloff" style="position:static;background:var(--cyan)"></span> PTO</span>
+    </div>
+  </div>
+
+  ${S.calSel?`<div class="card" style="max-width:${S.calTwin?'1180':'620'}px;margin-top:14px">
+    <div class="row"><h3 style="flex:1">${selDate.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</h3>
+      <button class="btn ghost sm" onclick="S.calSel=null;renderPage()">Close</button></div>
+    ${selOff.length?`<div class="offnote">${selOff.map(o=>`<span class="tag" style="background:${OFF_KIND[o.kind]?.bg};color:${OFF_KIND[o.kind]?.c}">${esc(o.who)} — ${esc(o.kind)}</span>`).join(' ')}</div>`:''}
+    ${sel.length?`<div class="hint">${sel.length} follow-up${sel.length===1?'':'s'} due · ${money(sel.reduce((s,r)=>s+(r.balance||0),0))} at stake. Click an account to open it.</div>
+      ${sel.sort((a,b)=>(b.balance||0)-(a.balance||0)).map(r=>calRow(r)).join('')}`
+      :`<div class="hint">No follow-ups scheduled for this day.</div>`}
+  </div>`:agendaHTML(byDay, overdue)}
+
+  ${timeOffPanel()}`;
+}
+
+function calRow(r){
+  return `<div onclick="openAcct('${esc(r.acct)}')" style="display:flex;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:12.5px">
+    <span class="code">${esc(r.status||'—')}</span>
+    <span style="flex:1"><b>${esc(r.name||r.acct)}</b> <span style="color:var(--dim)">· ${esc(r.desk)} · ${esc(r.acct)}</span></span>
+    <span class="mono">${money(r.balance)}</span>
+    ${tagFor(r.flag)}
+  </div>`;
+}
+
+function agendaHTML(byDay, overdue){
+  const T=today0(); const days=[];
+  for(let i=0;i<7;i++){ const d=new Date(T.getFullYear(),T.getMonth(),T.getDate()+i);
+    const list=byDay[dkey(d)]||[]; if(list.length) days.push([d,list]); }
+  if(!days.length && !overdue.length) return `<div class="card" style="max-width:620px;margin-top:14px">
+    <h3>Next 7 days</h3><div class="hint">Nothing scheduled — as follow-up dates get set in the reports they'll appear here automatically.</div></div>`;
+  return `
+  ${overdue.length?`<div class="card" style="max-width:620px;margin-top:14px;border-color:#542126">
+    <h3 style="color:var(--red)">Already missed — recontact first</h3>
+    <div class="hint">Promised and the date passed. Same-day recontact keeps the promise alive.</div>
+    ${overdue.sort((a,b)=>(a.followUp||0)-(b.followUp||0)).slice(0,12).map(r=>calRow(r)).join('')}
+    ${overdue.length>12?`<div style="padding:9px 0;font-size:11.5px;color:var(--dim)">…and ${overdue.length-12} more — filter accounts by FOLLOW-UP OVERDUE.</div>`:''}
+  </div>`:''}
+  ${days.length?`<div class="card" style="max-width:620px;margin-top:14px">
+    <h3>Coming up — next 7 days</h3><div class="hint">Tap any day on the calendar to zoom in.</div>
+    ${days.map(([d,list])=>`
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:${dkey(d)===dkey(T)?'var(--amber)':'var(--cyan)'};font-weight:700;margin:12px 0 2px">
+        ${dkey(d)===dkey(T)?'TODAY':d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'})} · ${list.length}${offOnDay(dkey(d)).length?' · <span style="color:var(--blue)">'+offOnDay(dkey(d)).map(o=>esc(o.who.split(' ')[0])+' off').join(', ')+'</span>':''}</div>
+      ${list.sort((a,b)=>(b.balance||0)-(a.balance||0)).map(r=>calRow(r)).join('')}`).join('')}
+  </div>`:''}`;
+}
+
+/* ---------- TIME OFF ---------- */
+function timeOffPanel(){
+  const byDay=followUpIndex();
+  const mine = S.user.role==='Specialist';
+  const list = S.timeOff.filter(t=> !mine || t.who===S.user.name || t.who==='Whole team')
+    .sort((a,b)=>a.start.localeCompare(b.start));
+  // impact: for each entry, how many follow-ups + $ fall on the working days off
+  const impactOf = t => {
+    let cnt=0, bal=0, accts=[];
+    Object.entries(byDay).forEach(([k,rows])=>{
+      if(!inRange(k,t.start,t.end)) return;
+      rows.forEach(r=>{
+        // specialist entries only count that specialist's own desk; team/other count all
+        if(t.who!=='Whole team'){
+          const u=S.cfg.users.find(u=>u.name===t.who);
+          if(u && u.desk && r.desk!==u.desk) return;
+        }
+        cnt++; bal+=r.balance||0; accts.push(r);
+      });
+    });
+    return {cnt,bal,accts};
+  };
+  const people = ['Whole team', ...S.cfg.users.filter(u=>u.role==='Specialist').map(u=>u.name)];
+  return `<div class="card" style="max-width:${S.calTwin?'1180':'620'}px;margin-top:14px">
+    <h3>Time off &amp; coverage</h3>
+    <div class="hint">Add vacation, sick, or PTO days. The app shows which follow-ups fall on those days so they can be worked ahead or handed off.</div>
+    ${!mine?`<div class="offform">
+      <select id="off-who">${people.map(p=>`<option>${esc(p)}</option>`).join('')}</select>
+      <select id="off-kind">${Object.keys(OFF_KIND).map(k=>`<option>${k}</option>`).join('')}</select>
+      <input type="date" id="off-start" value="${dkey(today0())}">
+      <input type="date" id="off-end" value="${dkey(today0())}">
+      <button class="btn sm" onclick="addTimeOff()">Add</button>
+    </div>`:`<div class="hint" style="color:var(--dim)">Ask your manager to log time off for you — you'll see the affected accounts here.</div>`}
+    ${list.length?list.map((t)=>{
+      const im=impactOf(t);
+      const gi=S.timeOff.indexOf(t);
+      const days=Math.round((parseK(t.end)-parseK(t.start))/86400000)+1;
+      return `<div class="offrow">
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:12.5px">${esc(t.who)} <span class="tag" style="background:${OFF_KIND[t.kind]?.bg};color:${OFF_KIND[t.kind]?.c};margin-left:4px">${esc(t.kind)}</span></div>
+          <div style="font-size:11.5px;color:var(--dim)">${parseK(t.start).toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${parseK(t.end).toLocaleDateString('en-US',{month:'short',day:'numeric'})} · ${days} day${days===1?'':'s'}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="mono" style="font-weight:700;color:${im.cnt?'var(--amber)':'var(--dim)'}">${im.cnt} follow-up${im.cnt===1?'':'s'}</div>
+          <div class="mono" style="font-size:11px;color:var(--dim)">${money(im.bal)} at stake</div>
+        </div>
+        ${im.cnt?`<button class="btn ghost sm" onclick="showOffImpact(${gi})">Which accounts</button>`:''}
+        ${!mine?`<button class="x" onclick="delTimeOff(${gi})">×</button>`:''}
+      </div>`;
+    }).join(''):`<div style="font-size:12.5px;color:var(--dim);padding:8px 0">No time off logged yet.</div>`}
+  </div>`;
+}
+window.addTimeOff = () => {
+  const who=$('#off-who').value, kind=$('#off-kind').value;
+  let start=$('#off-start').value, end=$('#off-end').value;
+  if(!start||!end){ toast('Pick a start and end date'); return; }
+  if(end<start){ [start,end]=[end,start]; }
+  S.timeOff.push({who,kind,start,end});
+  toast(`${kind} logged for ${who}`); refresh();
+};
+window.delTimeOff = i => { S.timeOff.splice(i,1); refresh(); };
+window.showOffImpact = i => {
+  const t=S.timeOff[i]; const byDay=followUpIndex();
+  const rows=[];
+  Object.entries(byDay).forEach(([k,rs])=>{ if(!inRange(k,t.start,t.end)) return;
+    rs.forEach(r=>{
+      if(t.who!=='Whole team'){ const u=S.cfg.users.find(u=>u.name===t.who); if(u&&u.desk&&r.desk!==u.desk) return; }
+      rows.push({...r,_day:k});
+    });
+  });
+  rows.sort((a,b)=> a._day.localeCompare(b._day) || (b.balance||0)-(a.balance||0));
+  $('#modal-root').innerHTML=`
+  <div class="mask" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <header><div><h3>${esc(t.who)} — ${esc(t.kind)}</h3>
+        <div class="m">${parseK(t.start).toLocaleDateString()} – ${parseK(t.end).toLocaleDateString()} · ${rows.length} follow-up${rows.length===1?'':'s'} affected</div></div>
+        <button class="x" onclick="closeModal()">×</button></header>
+      <div class="cnt">
+        <div class="hint">These follow-ups fall on the days off. Work them ahead of time, or reassign the desk while ${esc(t.who.split(' ')[0])} is out.</div>
+        ${rows.map(r=>`<div onclick="closeModal();openAcct('${esc(r.acct)}')" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:12.5px">
+          <span class="mono" style="color:var(--amber);min-width:52px">${parseK(r._day).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
+          <span class="code">${esc(r.status||'—')}</span>
+          <span style="flex:1"><b>${esc(r.name||r.acct)}</b> <span style="color:var(--dim)">· ${esc(r.acct)}</span></span>
+          <span class="mono">${money(r.balance)}</span>
+        </div>`).join('')}
+      </div>
+      <footer><div class="spacer"></div><button class="btn ghost" onclick="closeModal()">Close</button></footer>
+    </div>
+  </div>`;
+};
+window.calShift = n => {
+  const b=S.calBase||new Date(today0().getFullYear(),today0().getMonth(),1);
+  S.calBase=new Date(b.getFullYear(),b.getMonth()+n,1); S.calSel=null; renderPage();
+};
+window.calPick = k => { S.calSel = S.calSel===k?null:k; renderPage(); };
+
+/* ---------- ARCHIVE ---------- */
+function pArchive(v){
+  if(!S.archive.length){
+    v.innerHTML=`<div class="empty"><div class="big">Nothing archived yet</div>
+      <p>Every file dropped on Intake is recorded here automatically — who loaded it, when, and what was in it.</p></div>`;
+    return;
+  }
+  v.innerHTML=`<div class="tbl-wrap" style="max-height:none"><table>
+    <thead><tr><th>When</th><th>Loaded by</th><th>What</th><th>Files</th><th>Accounts</th><th></th></tr></thead>
+    <tbody>${S.archive.map((a,i)=>`
+      <tr style="cursor:default">
+        <td class="mono">${new Date(a.at).toLocaleString()}</td>
+        <td>${esc(a.by)}</td>
+        <td>${esc(a.kind)}</td>
+        <td style="font-size:11.5px;color:var(--muted)">${a.files.map(f=>esc(f)).join('<br>')}</td>
+        <td class="mono">${a.count}</td>
+        <td>${a.rows
+          ?`<div class="row"><button class="btn ghost sm" onclick="restoreSnap(${i})">Reload</button>
+             <button class="btn ghost sm" onclick="useAsYesterday(${i})">Use as yesterday</button></div>`
+          :'<span style="font-size:11px;color:var(--dim)">metadata only</span>'}</td>
+      </tr>`).join('')}
+    </tbody></table></div>
+  <p style="font-size:11.5px;color:var(--dim);margin-top:10px">The most recent 6 uploads keep their full account data and can be reloaded; older entries keep who/when/what.</p>`;
+}
+window.useAsYesterday = i => {
+  const a=S.archive[i]; if(!a?.rows){ toast('That snapshot only kept metadata'); return; }
+  S.yesterday=revRows(a.rows); S.yestFiles=[...a.files];
+  toast(`${a.count} accounts from ${new Date(a.at).toLocaleDateString()} set as yesterday's reports`);
+  S.page='flags'; refresh();
+};
+window.restoreSnap = i => {
+  const a=S.archive[i]; if(!a?.rows){ toast('That snapshot only kept metadata'); return; }
+  const rows=revRows(a.rows);
+  if(/Today/.test(a.kind)){ S.today=rows; S.todayFiles=[...a.files]; }
+  else { S.yesterday=rows; S.yestFiles=[...a.files]; }
+  toast(`Restored ${a.kind.toLowerCase()} from ${new Date(a.at).toLocaleDateString()}`);
+  S.page='flags'; refresh();
+};
+
+/* ---------- ACCOUNT DRAWER — notes thread ---------- */
+window.openAcct = acct => {
+  const r = R.visible.find(x=>x.acct===acct); if(!r) return;
+  const co = {[F.PAST]:'co-past',[F.APPR]:'co-appr',[F.FU]:'co-fu',[F.STAG]:'co-stag'}[r.flag];
+  $('#modal-root').innerHTML = `
+  <div class="mask" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <header>
+        <div><h3>${esc(r.name||'Account')}</h3>
+          <div class="m">${esc(r.acct)} · ${esc(r.desk||'unassigned')}</div></div>
+        <button class="x" onclick="closeModal()">×</button>
+      </header>
+      <div class="cnt">
+        ${r.todo?`<div class="callout ${co||''}">${esc(r.todo)}</div>`:''}
+        <dl class="kv">
+          <dt>Flag</dt><dd>${tagFor(r.flag)}</dd>
+          <dt>Days untouched</dt><dd>${r.days??'—'}</dd>
+          <dt>Balance</dt><dd>${money(r.balance)}</dd>
+          <dt>Action code</dt><dd>${esc(r.status)}</dd>
+          <dt>Last worked</dt><dd>${fmt(r.lastWorked)}</dd>
+          <dt>Last contact made</dt><dd>${fmt(r.lastContact)}</dd>
+          <dt>Follow-up set</dt><dd>${r.followUp?`${fmt(r.followUp)}${r.fuOverdue?' <span style="color:var(--red)">— missed</span>':''}`:'none set'}</dd>
+          <dt>Pass level</dt><dd>${r.pass?`<span style="color:var(--cyan)">${PASS_LABEL[r.pass]}</span>`:'untouched today'}</dd>
+          <dt>Worked today</dt><dd>${r.worked?`<span style="color:var(--cyan)">yes — ${esc(r.worked.by)}, ${ago(r.worked.at)}</span>`:'not yet'}</dd>
+          ${r.mismatch?`<dt>Assignee</dt><dd style="color:var(--red)">${esc(r.assignee||'none')} — doesn't match the desk</dd>`:''}
+        </dl>
+        <button class="btn ${r.worked?'ghost':''}" style="width:100%;margin-bottom:14px" onclick="toggleWorked('${esc(r.acct)}');openAcct('${esc(r.acct)}')">
+          ${r.worked?'✓ Worked today — tap to undo':'Mark this file worked today'}
+        </button>
+        <label class="f">Mark your pass — tap the level you just completed (tap it again to step back)</label>
+        <div class="passbig" style="margin-bottom:6px">
+          ${[1,2,3,4].map(k=>`<button class="pbtn ${r.pass>=k?'on':''} ${k===4?'fin':''}"
+              onclick="setPass('${esc(r.acct)}',${k});openAcct('${esc(r.acct)}')">${PASS_LABEL[k]}</button>`).join('')}
+        </div>
+        ${r.passInfo?.hist?.length?`<div class="phist">${r.passInfo.hist.slice(-4).map(h=>
+          `<div>${PASS_LABEL[h.n]} — ${esc(h.by)}, ${ago(h.at)}</div>`).join('')}</div>`:''}
+        <div style="margin-bottom:16px"></div>
+        ${r.xref?`<label class="f">From your cross-reference file</label>
+          <div class="card" style="padding:11px;font-size:12px;margin-bottom:16px">
+            ${Object.entries(r.xref).filter(([k])=>k!=='_src').slice(0,8).map(([k,val])=>
+              `<div><span style="color:var(--dim)">${esc(k)}:</span> <span class="mono">${esc(val)}</span></div>`).join('')}
+          </div>`:''}
+
+        <label class="f">Manager notes</label>
+        ${r.thread.length ? `<div class="thread">${r.thread.map((m,i)=>`
+            <div class="msg">
+              <div class="hd">
+                <span class="au">${esc(m.author)}</span>
+                <span class="rl">${esc(m.role)}</span>
+                <span class="tag ${m.status==='Resolved'?'t-ok':'t-appr'}" style="font-size:9.5px">${esc(m.status)}</span>
+                <span class="ts">${ago(m.at)}</span>
+                ${canCoach()?`<button class="del" onclick="delMsg('${esc(acct)}',${i})">×</button>`:''}
+              </div>
+              <div class="tx">${esc(m.text)}</div>
+            </div>`).join('')}</div>`
+          : `<div class="nothread">${canCoach()?'No notes yet — add the first one below.':'No manager has left a note on this account yet.'}</div>`}
+
+        ${canCoach()?`
+          <label class="f">Add a note</label>
+          <textarea id="n-tx" placeholder="What you want done, what was agreed, when to check back"></textarea>
+          <label class="f" style="margin-top:11px">Mark this account as</label>
+          <select id="n-st">${STATUSES.map(s=>`<option ${r.noteStatus===s?'selected':''}>${s}</option>`).join('')}</select>`
+        : `<div style="font-size:12px;color:var(--dim);margin-top:6px">Only managers can add notes. If you've handled this, tell your manager and they'll mark it resolved.</div>`}
+      </div>
+      <footer>
+        <div class="spacer"></div>
+        <button class="btn ghost" onclick="closeModal()">Close</button>
+        ${canCoach()?`<button class="btn" onclick="addMsg('${esc(acct)}')">Post note</button>`:''}
+      </footer>
+    </div>
+  </div>`;
+  if(canCoach()) setTimeout(()=>$('#n-tx')?.focus(),40);
+};
+window.addMsg = acct => {
+  const t=$('#n-tx').value.trim();
+  if(!t){ toast('Write something first'); return; }
+  (S.threads[acct] ||= []).push({
+    author:S.user.name, role:S.user.role, text:t, status:$('#n-st').value, at:new Date().toISOString()
+  });
+  closeModal(); toast('Note posted — the specialist will see it on their list'); refresh();
+};
+window.delMsg = (acct,i) => {
+  S.threads[acct].splice(i,1);
+  if(!S.threads[acct].length) delete S.threads[acct];
+  closeModal(); toast('Note deleted'); refresh();
+};
+window.closeModal = () => { $('#modal-root').innerHTML=''; };
+
+/* ---------- ADMIN ---------- */
+function pAdmin(v){
+  const C=S.cfg;
+  const desks=[...new Set([...Object.keys(C.managers),...R.rows.map(r=>r.desk)].filter(Boolean))].sort();
+  v.innerHTML = `
+  <div class="warn"><b>Worth knowing:</b> sign-in keeps the wrong screens out of the wrong hands, but it isn't real security — the passwords live in the app itself, so anyone technical could look past them. Data is shared with the whole team through the team server the moment it changes. Keep the site link inside your team, and clear it with Greystar IT before sharing it more widely.</div>
+
+  <div class="card adm-sec" style="margin-bottom:16px">
+    <h3>People</h3>
+    <div class="hint" style="margin-top:-4px">Admins see everything. Managers see the whole team and can write notes. Specialists only see their own desk and can read the notes you leave them.</div>
+    ${C.users.map((u,i)=>`
+      <div class="urow">
+        <input type="text" value="${esc(u.name)}" onchange="setUser(${i},'name',this.value)" placeholder="Name">
+        <input type="text" value="${esc(u.pin)}" onchange="setUser(${i},'pin',this.value)" placeholder="Password">
+        <select onchange="setUser(${i},'role',this.value)">
+          ${ROLES.map(r=>`<option ${u.role===r?'selected':''}>${r}</option>`).join('')}</select>
+        ${i===0?'<span></span>':`<button class="x" onclick="delUser(${i})">×</button>`}
+      </div>
+      ${u.role==='Specialist'?`<div class="urow" style="margin-top:-3px;margin-bottom:10px">
+        <select onchange="setUser(${i},'desk',this.value)" style="grid-column:1/3">
+          <option value="">— which desk do they own? —</option>
+          ${desks.map(d=>`<option ${u.desk===d?'selected':''}>${esc(d)}</option>`).join('')}
+        </select><span></span><span></span></div>`:''}
+    `).join('')}
+    <div class="row" style="margin-top:10px">
+      <button class="btn ghost sm" onclick="addUser()">+ Add person</button>
+      <button class="btn sm" onclick="saveUsers()">Save profiles</button>
+      <div class="spacer"></div>
+      <span style="font-size:11.5px;color:var(--dim)">${S.cfg.users.length} of ${typeof MAXU!=='undefined'?MAXU:60} users</span>
+    </div>
+  </div>
+
+  <div class="grid2" style="align-items:start">
+    <div class="card adm-sec">
+      <h3>The rule</h3>
+      <div class="hint" style="margin-top:-4px">How long an account can sit untouched before it sweeps to RDA.</div>
+      <div class="preset" style="margin-bottom:12px">
+        ${[30,40,50].map(d=>`<button class="${C.sweepDays===d?'on':''}" onclick="setCfg('sweepDays',${d})">${d} days</button>`).join('')}
+      </div>
+      <div class="grid2">
+        <div><label class="f">Custom</label>
+          <input type="number" min="1" max="365" value="${C.sweepDays}" onchange="setCfg('sweepDays',+this.value||30)"></div>
+        <div><label class="f">Warn this many days early</label>
+          <input type="number" min="1" max="120" value="${C.warnDays}" onchange="setCfg('warnDays',+this.value||14)"></div>
+      </div>
+      <p style="font-size:11.5px;color:var(--dim);margin-top:10px">
+        Amber from <b class="mono">${C.sweepDays-C.warnDays}</b> days, red past <b class="mono">${C.sweepDays}</b>.</p>
+    </div>
+    <div class="card adm-sec">
+      <h3>Alert me when a specialist has…</h3>
+      <div class="grid2">
+        ${[['past','Past the rule'],['appr','Approaching'],['fu','Follow-up missed'],['stag','No activity']].map(([k,l])=>`
+          <div><label class="f">${l}</label>
+            <input type="number" min="1" value="${C.alerts[k]}" onchange="setAlert('${k}',+this.value||1)"></div>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2" style="align-items:start;margin-top:16px">
+    <div class="card adm-sec">
+      <h3>Action codes</h3>
+      <label class="f">Ignore these completely</label>
+      ${tagInput('excluded')}
+      <label class="f" style="margin-top:13px">Swept-out page tracks only these</label>
+      ${tagInput('sweptOnly')}
+      <div class="row" style="margin-top:12px">
+        <button class="btn sm" onclick="saveCodes()">Save codes</button>
+        <span style="font-size:11px;color:var(--dim)">Syncs to the whole team automatically when the team server is connected. Download setup below is the offline fallback.</span>
+      </div>
+    </div>
+    <div class="card adm-sec">
+      <h3>Cross-reference files</h3>
+      <div class="hint" style="margin-top:-4px">Any spreadsheet with an account column. Matches get a ◆ and their data shows on the account and in exports.</div>
+      <div class="drop" id="d-xref" style="padding:20px">
+        <div class="lab" style="font-size:13px">Drop a file to cross-reference</div>
+        <div class="sub">Matched on the column named below</div>
+        ${S.xrefFiles.length?`<div class="cnt">${S.xref.length} rows · ${R.rows.filter(r=>r.xref).length} matched</div>
+          <div class="files">${S.xrefFiles.map(f=>`<span class="chip">${esc(f)}</span>`).join('')}</div>`:''}
+      </div>
+      <label class="f" style="margin-top:11px">Match on column</label>
+      <input type="text" value="${esc(C.xrefKey)}" onchange="setCfg('xrefKey',this.value)">
+      ${S.xrefFiles.length?`<button class="btn ghost sm" style="margin-top:9px" onclick="S.xref=[];S.xrefFiles=[];toast('Cross-reference removed');refresh()">Remove</button>`:''}
+    </div>
+  </div>
+
+  <div class="card adm-sec" style="margin-top:16px">
+    <h3>Teams</h3>
+    <div class="hint" style="margin-top:-4px">Who each specialist reports to. Drives the manager rollup on the dashboard.</div>
+    ${desks.length?desks.map(d=>`
+      <div class="map-row"><div class="sp">${esc(d)}</div>
+        <input type="text" placeholder="Manager name" value="${esc(C.managers[d]||'')}" onchange="setMgr('${esc(d)}',this.value)">
+      </div>`).join('')
+      :'<div style="color:var(--dim);font-size:13px">Load reports and specialists appear here automatically.</div>'}
+  </div>
+
+  <div class="card adm-sec" style="margin-top:16px">
+    <h3>Publish your setup to the whole team</h3>
+    <div class="hint" style="margin-top:-4px">Your changes save on <b>this device</b> automatically. To make passwords, people, codes, and rules apply for <b>everyone</b>: click Publish, then upload the downloaded <span class="mono">setup.json</span> to Vercel in the same folder as <span class="mono">index.html</span>. Every browser that opens the site loads it automatically. Repeat whenever you change settings.</div>
+    <div class="row">
+      <button class="btn" onclick="saveSetup()">Publish — download setup.json</button>
+      <button class="btn ghost" onclick="loadSetup()">Load a setup file</button>
+    </div>
+  </div>`;
+
+  const dz=$('#d-xref');
+  if(dz){
+    const pick=()=>{const i=document.createElement('input');i.type='file';i.multiple=true;
+      i.accept='.xlsx,.xls,.csv';i.onchange=e=>loadXref([...e.target.files]);i.click();};
+    dz.onclick=pick;
+    dz.ondragover=e=>{e.preventDefault();dz.classList.add('over')};
+    dz.ondragleave=()=>dz.classList.remove('over');
+    dz.ondrop=e=>{e.preventDefault();dz.classList.remove('over');loadXref([...e.dataTransfer.files])};
+  }
+}
+function tagInput(key){
+  return `<div class="tagin">
+    ${S.cfg[key].map((t,i)=>`<span class="tg">${esc(t)}<button onclick="delTag('${key}',${i})">×</button></span>`).join('')}
+    <input type="text" placeholder="add a code, press Enter" onkeydown="addTag(event,'${key}')">
+  </div>`;
+}
+window.addTag=(e,key)=>{
+  if(e.key!=='Enter')return; e.preventDefault();
+  const v=e.target.value.trim().toUpperCase(); if(!v)return;
+  if(!S.cfg[key].includes(v)) S.cfg[key].push(v);
+  e.target.value=''; refresh();
+};
+window.delTag=(k,i)=>{S.cfg[k].splice(i,1);refresh();};
+window.setCfg=(k,v)=>{S.cfg[k]=v;refresh();};
+window.setAlert=(k,v)=>{S.cfg.alerts[k]=v;refresh();};
+window.setMgr=(d,v)=>{S.cfg.managers[d]=v.trim();refresh();};
+window.setUser=(i,k,v)=>{
+  S.cfg.users[i][k]=v.trim();
+  if(k==='role'&&v!=='Specialist') S.cfg.users[i].desk='';
+  if(S.user && S.cfg.users[i].name===S.user.name) S.user={...S.cfg.users[i]};
+  persist();
+  refresh();
+};
+window.saveCodes=()=>{
+  persist();
+  toast(`Saved — ignoring ${S.cfg.excluded.join(', ')||'nothing'}; swept page tracks ${S.cfg.sweptOnly.join(', ')}`);
+};
+window.saveUsers=()=>{
+  persist();
+  toast(`Saved — ${S.cfg.users.length} profile${S.cfg.users.length===1?'':'s'} stored on this device`);
+};
+const MAXU = 60;
+window.addUser=()=>{
+  if(S.cfg.users.length >= MAXU){ toast(`This supports up to ${MAXU} users — remove someone first`); return; }
+  S.cfg.users.push({name:'New person',role:'Specialist',pin:String(Math.floor(1000+Math.random()*9000)),desk:''});
+  persist();
+  toast('Added — set their name, password, role, and desk, then hit Save profiles'); refresh();
+};
+window.delUser=i=>{
+  if(S.cfg.users[i].name===S.user.name){ toast("You can't remove yourself"); return; }
+  S.cfg.users.splice(i,1); refresh();
+};
+async function loadXref(files){
+  if(!files.length)return;
+  try{
+    let rows=[];const names=[];
+    for(const f of files){ rows=rows.concat(await readXref(f)); names.push(f.name); }
+    S.xref=[...S.xref,...rows]; S.xrefFiles=[...new Set([...S.xrefFiles,...names])];
+    refresh();
+    const hit=R.rows.filter(r=>r.xref).length;
+    toast(hit?`${hit} accounts matched`:'Loaded, but nothing matched — check the column name');
+  }catch(e){ toast('Could not read that file — '+e.message); }
+}
+function saveSetup(){
+  S.cfg._savedAt = Date.now();
+  persist();
+  const blob=new Blob([JSON.stringify({sharedAt:Date.now(),cfg:S.cfg,threads:S.threads},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='setup.json'; a.click();
+  toast('setup.json downloaded — upload it to Vercel next to index.html');
+}
+function loadSetup(){
+  const i=document.createElement('input'); i.type='file'; i.accept='.json';
+  i.onchange=async e=>{
+    try{
+      const d=JSON.parse(await e.target.files[0].text());
+      if(d.cfg) S.cfg={...S.cfg,...d.cfg};
+      if(d.threads) S.threads=d.threads;
+      if(d.passes) S.passes=d.passes;
+      if(d.worked) S.worked=d.worked;
+      if(d.archive) S.archive=d.archive;
+      toast('Setup loaded'); refresh();
+    }catch(err){ toast('That is not a Sweep Desk setup file'); }
+  };
+  i.click();
+}
+window.exportCSV=()=>{
+  const base = S.page==='coach' ? R.visible.filter(r=>[F.PAST,F.APPR,F.FU].includes(r.flag)&&r.status!=='Resolved')
+             : S.page==='notes' ? R.visible.filter(r=>r.thread.length) : R.visible;
+  const rows=sortRows(applyFilters(base));
+  const xcols=[...new Set(S.xref.flatMap(x=>Object.keys(x)))].filter(k=>k!=='_src');
+  const head=['Worked today','Worked by','Worked at','Pass level','Last pass by','Last pass at','Account','Specialist','Assignee','Manager','Resident','Code','Age','Balance',
+    'Last worked','Last contact made','Last touch','Days untouched','Follow-up on','Follow-up missed','Flag','What to do',
+    'Note status','Latest note','Note author',...xcols.map(c=>'XREF: '+c)];
+  const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+  const lines=[head.map(q).join(',')];
+  rows.forEach(r=>{ const last=r.thread[r.thread.length-1];
+    const lastPass=r.passInfo?.hist?.[r.passInfo.hist.length-1];
+    lines.push([r.worked?'YES':'', r.worked?.by||'', r.worked?fmt(new Date(r.worked.at)):'',
+      r.pass?PASS_LABEL[r.pass]:'', lastPass?.by||'', lastPass?fmt(new Date(lastPass.at)):'',
+      r.acct,r.desk,r.assignee,r.mgr,r.name,r.status,r.age,r.balance,
+      fmt(r.lastWorked),fmt(r.lastContact),fmt(r.lastTouch),r.days,fmt(r.followUp),r.fuOverdue?'YES':'',r.flag,r.todo,
+      last?.status||'',last?.text||'',last?.author||'',
+      ...xcols.map(c=>r.xref?.[c]??'')].map(q).join(','));
+  });
+  const blob=new Blob([lines.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`sweep-desk-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  toast(`Exported ${rows.length} rows`);
+};
+function toast(m){
+  const r=$('#toast-root');
+  r.innerHTML=`<div class="toast">${esc(m)}</div>`;
+  clearTimeout(window._t); window._t=setTimeout(()=>r.innerHTML='',3200);
+}
+const restored = boot();
+refresh();
+if(restored) setTimeout(()=>toast('Previous session restored'),400);
+// Team setup: if a setup.json sits next to this file on the server, it is the
+// admin-published source of truth for people, rules, and codes. Newer wins.
+(async()=>{
+  try{
+    const res = await fetch('./setup.json',{cache:'no-store'});
+    if(!res.ok) return;
+    const d = await res.json();
+    if(!d.cfg) return;
+    const sharedAt = d.cfg._savedAt||d.sharedAt||1;
+    const localAt = S.cfg._savedAt||0;
+    if(sharedAt > localAt){
+      S.cfg = {...S.cfg, ...d.cfg};
+      if(d.threads && !Object.keys(S.threads).length) S.threads = d.threads;
+      refresh();
+      setTimeout(()=>toast('Team setup loaded from the server'),700);
+    }
+  }catch(e){/* no setup.json — local settings apply */}
+})();
+</script>
+<script src="./sync.js"></script>
+</body>
+</html>
