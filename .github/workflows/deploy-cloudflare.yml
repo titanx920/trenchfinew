@@ -1,0 +1,39 @@
+name: Deploy Sweep Desk to Cloudflare Pages
+
+on:
+  push:
+    branches: [main, claude/multi-platform-deployment-p2e2f7]
+    paths:
+      - 'public/sweepdesk/**'
+      - '.github/workflows/deploy-cloudflare.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # Skip gracefully until the Cloudflare secrets are added
+      # (repo Settings → Secrets and variables → Actions).
+      - id: creds
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CF_TOKEN" ] && [ -n "$CF_ACCOUNT" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID secrets not set — skipping Cloudflare deploy."
+          fi
+
+      - if: steps.creds.outputs.ok == 'true'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy public/sweepdesk --project-name=sweep-desk

@@ -1,0 +1,89 @@
+{
+  "sharedAt": 1784216095657,
+  "cfg": {
+    "sweepDays": 30,
+    "warnDays": 14,
+    "excluded": [
+      "PPA",
+      "PIF",
+      "SIF"
+    ],
+    "sweptOnly": [
+      "CNP",
+      "PNC",
+      "SPNPNC",
+      "SPNCNP"
+    ],
+    "managers": {},
+    "alerts": {
+      "past": 15,
+      "appr": 60,
+      "fu": 40,
+      "stag": 50
+    },
+    "xrefKey": "Account #",
+    "users": [
+      {
+        "name": "Tony",
+        "role": "Admin",
+        "pin": "admin1",
+        "desk": ""
+      },
+      {
+        "name": "Heather",
+        "role": "Specialist",
+        "pin": "1017",
+        "desk": ""
+      },
+      {
+        "name": "Kyle",
+        "role": "Specialist",
+        "pin": "6960",
+        "desk": ""
+      },
+      {
+        "name": "Isabel",
+        "role": "Specialist",
+        "pin": "3325",
+        "desk": ""
+      },
+      {
+        "name": "Angela",
+        "role": "Specialist",
+        "pin": "1001",
+        "desk": ""
+      },
+      {
+        "name": "Samantha",
+        "role": "Specialist",
+        "pin": "7754",
+        "desk": ""
+      },
+      {
+        "name": "Sara",
+        "role": "Specialist",
+        "pin": "6283",
+        "desk": ""
+      },
+      {
+        "name": "Hannah",
+        "role": "Specialist",
+        "pin": "4265",
+        "desk": ""
+      },
+      {
+        "name": "Cynthia",
+        "role": "Specialist",
+        "pin": "1689",
+        "desk": ""
+      },
+      {
+        "name": "Erica",
+        "role": "Specialist",
+        "pin": "5590",
+        "desk": ""
+      }
+    ],
+    "_savedAt": 1784216095657
+  }
+}
