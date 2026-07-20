@@ -1,37 +1,14 @@
 // middleware.js
+// Disabled (empty matcher) — kept as a stub. The previous version imported
+// jsonwebtoken here, which pulls Node-only modules into the Edge runtime and
+// makes Vercel reject the whole deployment even though this never runs.
+// Admin route protection happens server-side in the API routes instead.
 import { NextResponse } from 'next/server';
-import jwt from 'jsonwebtoken';
-
-const ADMIN_ROLE = 'admin'; // ya specific wallet/email/flag as per your schema
 
 export async function middleware(req) {
-  const token = req.cookies.get('token')?.value;
-  console.log('🪙 Token:', token);
-
-  if (!token) {
-    console.log('🚫 No token found, redirecting...');
-    return NextResponse.redirect(new URL('/', req.url));
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('✅ Token decoded:', decoded);
-
-    if (decoded.role !== ADMIN_ROLE) {
-      console.log('⛔ User not admin, redirecting...');
-      return NextResponse.redirect(new URL('/', req.url));
-    }
-
-    console.log('🎉 Access granted to admin');
-    return NextResponse.next();
-  } catch (err) {
-    console.log('❌ Token verification failed:', err.message);
-    return NextResponse.redirect(new URL('/', req.url));
-  }
+  return NextResponse.next();
 }
 
-
-// middleware.js
 export const config = {
   matcher: [], // 👈 Disable middleware for now
 };
