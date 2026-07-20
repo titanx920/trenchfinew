@@ -39,8 +39,17 @@ shared-state API at `src/app/api/sweepdesk/state/route.js` (Next.js + MongoDB).
    - `JWT_SECRET` — any long random string (used by the existing trenchfinew auth)
    - `SWEEPDESK_KEY` — *(optional)* a shared passphrase; if set, the Sweep Desk
      API rejects requests that don't present it (see `config.js`)
-3. Redeploy after adding the variables. Sweep Desk is now at
+3. **MongoDB Atlas must accept connections from Vercel**: in Atlas go to
+   **Network Access → Add IP Address → Allow access from anywhere
+   (0.0.0.0/0)**. Vercel's servers change IPs, so without this the API
+   silently fails and uploads won't sync between users.
+4. Redeploy after adding the variables. Sweep Desk is now at
    `https://<your-project>.vercel.app/sweepdesk/`.
+
+Note on large reports: Vercel rejects request bodies over ~4.5 MB. The app
+handles this automatically — if the shared data set gets that big it trims
+older archived row snapshots from the sync (they stay on the uploader's
+device) and tells you with a toast instead of failing silently.
 
 Vercel's GitHub integration auto-deploys every push — nothing else needed.
 

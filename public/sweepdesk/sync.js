@@ -105,11 +105,39 @@
     pushTimer = setTimeout(pushState, 900);
   }
 
-  function pushState(retried){
+  // Vercel rejects request bodies over ~4.5 MB. Tiered snapshots drop the
+  // bulkiest optional data (archived row snapshots, then cross-reference
+  // rows) so the core shared state always fits.
+  var SIZE_BUDGET = 3800000;
+  function snapshotTier(t){
+    var s = snapshot();
+    if(t >= 1) s.archive = S.archive.map(function(a,i){
+      if(i < 2) return a;
+      var o = Object.assign({}, a); delete o.rows; return o;
+    });
+    if(t >= 2){
+      s.archive = S.archive.map(function(a){ var o = Object.assign({}, a); delete o.rows; return o; });
+      s.xref = [];
+    }
+    return s;
+  }
+  function fittedBody(){
+    for(var t = 0; t <= 2; t++){
+      var body = JSON.stringify({baseVersion: VER, state: snapshotTier(t)});
+      if(body.length <= SIZE_BUDGET || t === 2) return {body: body, tier: t};
+    }
+  }
+  var toldSlim = false, toldFail = false;
+  function pushState(retried, tierOverride){
     if(pushing){ pendingPush = true; return; }
     pushing = true;
-    fetch(URL_STATE, {method:'PUT', headers:headers(),
-        body: JSON.stringify({baseVersion: VER, state: snapshot()})})
+    var fit = tierOverride === undefined ? fittedBody()
+      : {body: JSON.stringify({baseVersion: VER, state: snapshotTier(tierOverride)}), tier: tierOverride};
+    if(fit.tier > 0 && !toldSlim && typeof toast === 'function'){
+      toldSlim = true;
+      toast('Large data set — older archive snapshots stay on this device so sync keeps working');
+    }
+    fetch(URL_STATE, {method:'PUT', headers:headers(), body: fit.body})
       .then(function(res){
         if(res.status === 409){
           return res.json().then(function(d){
@@ -124,7 +152,17 @@
             VER = d.version; clearDirty(); setConnected(true);
           });
         }
-        if(res.status === 401) setConnected(false, 'Server key rejected — check config.js');
+        if(res.status === 401){ setConnected(false, 'Server key rejected — check config.js'); return; }
+        if(res.status === 404) return;   // static-only copy with no API — local mode, stay quiet
+        if(res.status === 413 && fit.tier < 2){
+          pushing = false; return pushState(retried, fit.tier + 1);
+        }
+        if(!toldFail && typeof toast === 'function'){
+          toldFail = true;
+          toast(res.status === 413
+            ? 'This data set is too large for the team server — it is saved on this device only'
+            : 'Team server error ('+res.status+') — data saved locally. If this keeps up, check MONGODB_URI and Atlas Network Access on the server.');
+        }
       })
       .catch(function(){ /* offline — keep local, retry on next change/poll */ })
       .then(function(){
@@ -137,18 +175,46 @@
     return fetch(URL_STATE, {headers: headers()})
       .then(function(res){
         if(res.status === 401){ setConnected(false, 'Server key rejected — check config.js'); return; }
-        if(!res.ok) return;
+        if(!res.ok) return;   // 404 = static-only copy with no API; others retried next poll
         return res.json().then(function(d){
           setConnected(true);
           if(d.version === VER && !initial) return;   // nothing new
           var changed = d.version !== VER;
           VER = d.version;
+          var before = noteCounts();
           mergeServer(d.state);
+          if(changed && !initial) announceNewNotes(before);
           if(anyDirty()) schedulePush();              // we have local edits the server lacks
           if(changed || initial) refresh();
         });
       })
       .catch(function(){ /* offline — app still works locally */ });
+  }
+
+  // Desktop-notify when someone else leaves a note while we're signed in.
+  function noteCounts(){
+    var m = {};
+    Object.keys(S.threads || {}).forEach(function(a){ m[a] = S.threads[a].length; });
+    return m;
+  }
+  function announceNewNotes(before){
+    if(!S.user || typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    var shown = 0;
+    Object.keys(S.threads || {}).forEach(function(acct){
+      if(shown >= 3) return;
+      var th = S.threads[acct];
+      if(!th.length || th.length <= (before[acct] || 0)) return;
+      var last = th[th.length - 1];
+      if(last.author === S.user.name) return;
+      if(S.user.role === 'Specialist' && S.user.desk){
+        var row = (typeof R !== 'undefined' && R.rows || []).find(function(r){ return r.acct === acct; });
+        if(row && row.desk !== S.user.desk) return;   // not my desk — skip
+      }
+      try{
+        new Notification('New note on ' + acct, {body: last.author + ': ' + String(last.text || '').slice(0, 90)});
+        shown++;
+      }catch(e){}
+    });
   }
 
   function setConnected(ok, msg){
@@ -185,6 +251,7 @@
   wrap('clearAll',       function(){ DIRTY.reports = true; DIRTY.archive = true; });
   wrap('restoreSnap',    function(){ DIRTY.reports = true; });
   wrap('useAsYesterday', function(){ DIRTY.reports = true; });
+  wrap('useLatestArchiveAsYesterday', function(){ DIRTY.reports = true; });
   var _loadFiles = loadFiles;
   loadFiles = function(files, kind){
     DIRTY.reports = true; DIRTY.archive = true; DIRTY.cfg = true;   // uploads also auto-link desks in cfg

@@ -375,6 +375,7 @@ const S = {
   cfg: {
     sweepDays: 30,
     warnDays: 14,
+    workday: {start: 8, end: 17},   // local-time 8–5 used for desk alerts
     excluded: ['PPA','PIF','SIF'],
     sweptOnly: ['CNP','PNC','SPNPNC','SPNCNP'],
     managers: {},
@@ -609,6 +610,7 @@ window.doSignin = i => {
   S.user = {...u};
   S.page = S.today.length ? 'flags' : 'intake';
   closeModal(); toast(`Signed in as ${u.name}`); refresh();
+  setTimeout(()=>workdayCheck(true), 2500);
 };
 window.signout = () => { S.user=null; S.filters={q:'',desk:'',flag:'',mgr:'',pass:'',code:'',worked:''}; refresh(); };
 
@@ -724,6 +726,7 @@ function renderPage(){
   }
   
   ({intake:pIntake,flags:pFlags,coach:pCoach,notes:pNotes,swept:pSwept,alerts:pAlerts,dash:pDash,admin:pAdmin,archive:pArchive,cal:pCal}[S.page]||pFlags)(v);
+  v.insertAdjacentHTML('afterbegin', notifBannerHTML());
 }
 
 /* ---------- the key (legend) ---------- */
@@ -751,9 +754,11 @@ function pIntake(v){
     </div>
     <div class="drop ${S.yestFiles.length?'has':''}" id="d-yest">
       <div class="lab">Yesterday's reports</div>
-      <div class="sub">Needed for swept-out and no-activity detection</div>
+      <div class="sub">Needed for swept-out and no-activity detection — or reuse an archived report below</div>
       ${S.yestFiles.length?`<div class="cnt">${S.yesterday.length} accounts · ${S.yestFiles.length} file${S.yestFiles.length===1?'':'s'}</div>
         <div class="files">${S.yestFiles.map(f=>`<span class="chip">${esc(f)}</span>`).join('')}</div>`:''}
+      ${!S.yestFiles.length && S.archive.some(a=>a.rows && /Today/.test(a.kind) && new Date(a.at).toDateString()!==new Date().toDateString())
+        ? `<div style="margin-top:12px"><button class="btn ghost sm" onclick="event.stopPropagation();useLatestArchiveAsYesterday()">↺ Use last archived report as yesterday</button></div>`:''}
     </div>
   </div>
   ${S.today.length?statsHTML(R.visible):''}
@@ -833,7 +838,7 @@ async function loadFiles(files,kind){
     // archive the upload against this user's profile, immediately
     S.archive.unshift({at:new Date().toISOString(), by:S.user.name, kind:kind==='today'?"Today's reports":"Yesterday's reports",
       files:names, count:rows.length, rows:serRows(rows)});
-    // keep full row snapshots for the latest 6 uploads; older entries keep metadata only
+    // keep full row snapshots for the latest 10 uploads; older entries keep metadata only
     S.archive.forEach((a,i)=>{ if(i>=10) delete a.rows; });
     S.archive = S.archive.slice(0,40);
     toast(`Loaded ${rows.length} accounts — archived to your profile`); refresh();
@@ -1250,6 +1255,7 @@ function pCal(v){
     <div class="stat cyan"><div class="n">${aheadCount}</div><div class="l">Scheduled ahead</div></div>
     <div class="stat blue"><div class="n">${S.timeOff.length}</div><div class="l">Time-off entries</div></div>
   </div>
+  ${workAheadHTML()}
 
   <div class="card" style="max-width:${S.calTwin?'1180':'620'}px">
     <div class="row" style="margin-bottom:6px">
@@ -1320,6 +1326,36 @@ function agendaHTML(byDay, overdue){
   </div>`:''}`;
 }
 
+/* ---------- WORK AHEAD — files due during a specialist's time off ---------- */
+function workAheadHTML(){
+  if(S.user.role!=='Specialist') return '';
+  const byDay=followUpIndex(), T=dkey(today0());
+  const mine=S.timeOff.filter(t=>(t.who===S.user.name||t.who==='Whole team') && t.end>=T);
+  if(!mine.length) return '';
+  return mine.map(t=>{
+    let rows=[];
+    Object.entries(byDay).forEach(([k,rs])=>{ if(inRange(k,t.start,t.end)) rows=rows.concat(rs.map(r=>({...r,_day:k}))); });
+    rows.sort((a,b)=>a._day.localeCompare(b._day)||(b.balance||0)-(a.balance||0));
+    const span=`${parseK(t.start).toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${parseK(t.end).toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+    const kc=OFF_KIND[t.kind]||{};
+    return `<div class="card" style="max-width:${S.calTwin?'1180':'620'}px;margin-bottom:14px;border-color:#54401C">
+      <h3 style="color:var(--amber)">Work ahead — you're out ${span}</h3>
+      <div class="hint"><span class="tag" style="background:${kc.bg||'var(--grey-bg)'};color:${kc.c||'var(--muted)'}">${esc(t.kind)}</span>
+        ${rows.length
+          ? ` ${rows.length} follow-up${rows.length===1?'':'s'} land while you're away · ${money(rows.reduce((s,r)=>s+(r.balance||0),0))} at stake. Work these before you go, or ask your manager to cover them.`
+          : ` No follow-ups land during this time off — you're clear.`}</div>
+      ${rows.slice(0,10).map(r=>`<div onclick="openAcct('${esc(r.acct)}')" style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);cursor:pointer;font-size:12.5px">
+        <span class="mono" style="color:var(--amber);min-width:52px">${parseK(r._day).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>
+        <span class="code">${esc(r.status||'—')}</span>
+        <span style="flex:1"><b>${esc(r.name||r.acct)}</b> <span style="color:var(--dim)">· ${esc(r.acct)}</span></span>
+        <span class="mono">${money(r.balance)}</span>
+        ${r.worked?'<span class="tag t-ok">worked ✓</span>':tagFor(r.flag)}
+      </div>`).join('')}
+      ${rows.length>10?`<div style="padding:8px 0;font-size:11.5px;color:var(--dim)">…and ${rows.length-10} more — tap the days on the calendar to see each one.</div>`:''}
+    </div>`;
+  }).join('');
+}
+
 /* ---------- TIME OFF ---------- */
 function timeOffPanel(){
   const byDay=followUpIndex();
@@ -1349,10 +1385,16 @@ function timeOffPanel(){
     ${!mine?`<div class="offform">
       <select id="off-who">${people.map(p=>`<option>${esc(p)}</option>`).join('')}</select>
       <select id="off-kind">${Object.keys(OFF_KIND).map(k=>`<option>${k}</option>`).join('')}</select>
-      <input type="date" id="off-start" value="${dkey(today0())}">
-      <input type="date" id="off-end" value="${dkey(today0())}">
+      <input type="date" id="off-start" value="${S.calSel||dkey(today0())}">
+      <input type="date" id="off-end" value="${S.calSel||dkey(today0())}">
       <button class="btn sm" onclick="addTimeOff()">Add</button>
-    </div>`:`<div class="hint" style="color:var(--dim)">Ask your manager to log time off for you — you'll see the affected accounts here.</div>`}
+    </div>`:`<div class="offform" style="grid-template-columns:1.2fr 1fr 1fr auto">
+      <select id="off-kind">${Object.keys(OFF_KIND).map(k=>`<option>${k}</option>`).join('')}</select>
+      <input type="date" id="off-start" value="${S.calSel||dkey(today0())}">
+      <input type="date" id="off-end" value="${S.calSel||dkey(today0())}">
+      <button class="btn sm" onclick="addTimeOff()">Request time off</button>
+    </div>
+    <div class="hint" style="margin-top:2px">Tap any day on the calendar to pre-fill the dates. Your manager and the whole team see the request instantly, and the app shows which of your files need working ahead.</div>`}
     ${list.length?list.map((t)=>{
       const im=impactOf(t);
       const gi=S.timeOff.indexOf(t);
@@ -1367,18 +1409,22 @@ function timeOffPanel(){
           <div class="mono" style="font-size:11px;color:var(--dim)">${money(im.bal)} at stake</div>
         </div>
         ${im.cnt?`<button class="btn ghost sm" onclick="showOffImpact(${gi})">Which accounts</button>`:''}
-        ${!mine?`<button class="x" onclick="delTimeOff(${gi})">×</button>`:''}
+        ${(!mine || t.who===S.user.name)?`<button class="x" onclick="delTimeOff(${gi})" title="Remove this time off">×</button>`:''}
       </div>`;
     }).join(''):`<div style="font-size:12.5px;color:var(--dim);padding:8px 0">No time off logged yet.</div>`}
   </div>`;
 }
 window.addTimeOff = () => {
-  const who=$('#off-who').value, kind=$('#off-kind').value;
+  const who = S.user.role==='Specialist' ? S.user.name : $('#off-who').value;
+  const kind=$('#off-kind').value;
   let start=$('#off-start').value, end=$('#off-end').value;
   if(!start||!end){ toast('Pick a start and end date'); return; }
   if(end<start){ [start,end]=[end,start]; }
   S.timeOff.push({who,kind,start,end});
-  toast(`${kind} logged for ${who}`); refresh();
+  toast(S.user.role==='Specialist'
+    ? `${kind} requested for ${start===end?parseK(start).toLocaleDateString():'those days'} — check "Work ahead" below for files to handle first`
+    : `${kind} logged for ${who}`);
+  refresh();
 };
 window.delTimeOff = i => { S.timeOff.splice(i,1); refresh(); };
 window.showOffImpact = i => {
@@ -1438,8 +1484,16 @@ function pArchive(v){
           :'<span style="font-size:11px;color:var(--dim)">metadata only</span>'}</td>
       </tr>`).join('')}
     </tbody></table></div>
-  <p style="font-size:11.5px;color:var(--dim);margin-top:10px">The most recent 6 uploads keep their full account data and can be reloaded; older entries keep who/when/what.</p>`;
+  <p style="font-size:11.5px;color:var(--dim);margin-top:10px">The most recent 10 uploads keep their full account data and can be reloaded or set as yesterday's report — that's how the app knows what swept overnight and what's approaching. Older entries keep who/when/what.</p>`;
 }
+window.useLatestArchiveAsYesterday = () => {
+  const prior=S.archive.find(a=>a.rows && /Today/.test(a.kind)
+    && new Date(a.at).toDateString()!==new Date().toDateString());
+  if(!prior){ toast('No archived snapshot from a previous day yet'); return; }
+  S.yesterday=revRows(prior.rows); S.yestFiles=[...prior.files];
+  toast(`${prior.count} accounts from ${new Date(prior.at).toLocaleDateString()} set as yesterday — swept-out and no-activity checks are live`);
+  refresh();
+};
 window.useAsYesterday = i => {
   const a=S.archive[i]; if(!a?.rows){ toast('That snapshot only kept metadata'); return; }
   S.yesterday=revRows(a.rows); S.yestFiles=[...a.files];
@@ -1762,6 +1816,59 @@ function toast(m){
   r.innerHTML=`<div class="toast">${esc(m)}</div>`;
   clearTimeout(window._t); window._t=setTimeout(()=>r.innerHTML='',3200);
 }
+
+/* ---------- DESK ALERTS (local timezone, 8–5) ---------- */
+const canNotify = () => 'Notification' in window && Notification.permission==='granted';
+function notify(title, body){
+  toast(title + (body ? ' — ' + body : ''));
+  if(canNotify()){ try{ new Notification(title, {body}); }catch(e){} }
+}
+window.enableNotifs = () => {
+  if(!('Notification' in window)){ toast('This browser does not support desktop alerts'); return; }
+  Notification.requestPermission().then(p=>{
+    toast(p==='granted' ? 'Desktop alerts are on — you\'ll hear about unworked files and new notes'
+                        : 'Alerts stay off — you can change this in your browser\'s site settings');
+    refresh();
+  });
+};
+window.dismissNotifs = () => { try{ localStorage.setItem('sweepdesk_notif_hide','1'); }catch(e){} refresh(); };
+function notifBannerHTML(){
+  if(!('Notification' in window) || Notification.permission!=='default') return '';
+  try{ if(localStorage.getItem('sweepdesk_notif_hide')) return ''; }catch(e){}
+  return `<div class="alert" style="border-left-color:var(--cyan);margin-bottom:14px">
+    <div class="num">🔔</div>
+    <div class="txt"><div class="who">Turn on desk alerts</div>
+      <div class="msg">Get a desktop notification when flagged files sit unworked during your 8–5, and when a manager leaves you a note.</div></div>
+    <button class="btn sm" onclick="enableNotifs()">Enable alerts</button>
+    <button class="btn ghost sm" onclick="dismissNotifs()">Not now</button>
+  </div>`;
+}
+// Checks the desk against the 8–5 (browser-local time). force skips the
+// hourly throttle; ignoreSchedule skips the weekday/work-hours gate (tests).
+function workdayCheck(force, ignoreSchedule){
+  if(!S.user || !S.today.length) return;
+  const wd = S.cfg.workday || {start:8,end:17};
+  const now = new Date();
+  const hr = now.getHours() + now.getMinutes()/60;
+  if(!ignoreSchedule){
+    if([0,6].includes(now.getDay())) return;               // weekend
+    if(hr < wd.start || hr >= wd.end) return;              // outside 8–5
+  }
+  const urgent = R.visible.filter(r=>[F.PAST,F.APPR,F.FU].includes(r.flag) && !r.worked);
+  if(!urgent.length) return;
+  const key = 'sweepdesk_wdalert_' + S.user.name;
+  if(!force){
+    let last = 0; try{ last = +(localStorage.getItem(key)||0); }catch(e){}
+    if(Date.now() - last < 55*60*1000) return;             // at most about once an hour
+  }
+  try{ localStorage.setItem(key, String(Date.now())); }catch(e){}
+  const minsLeft = Math.max(0, Math.round((wd.end - hr)*60));
+  const h = Math.floor(minsLeft/60), m = minsLeft%60;
+  const closing = hr >= wd.end - 2;
+  notify(`${urgent.length} flagged file${urgent.length===1?'':'s'} not worked yet`,
+    `${closing ? 'End of day is close — ' : ''}${h}h ${m}m left in the 8–5${S.user.role==='Specialist'?' on your desk':''}. Red ones sweep first.`);
+}
+setInterval(()=>workdayCheck(false), 30*60*1000);
 const restored = boot();
 refresh();
 if(restored) setTimeout(()=>toast('Previous session restored'),400);
