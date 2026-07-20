@@ -41,3 +41,6 @@ next-env.d.ts
 .env.local
 .env*.local
 .env
+
+# FerretDB (local test database) state file
+state.json
